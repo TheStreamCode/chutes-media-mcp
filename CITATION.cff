@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Chutes Media MCP"
+authors:
+  - family-names: Gasperini
+    given-names: Michael
+url: "https://github.com/TheStreamCode/chutes-media-mcp"
+version: "1.1.0"
+license: MIT
