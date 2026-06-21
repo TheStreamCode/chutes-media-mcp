@@ -23,7 +23,8 @@ Initial release.
 - Blocking invocation with progress updates (MCP progress notifications / CLI stderr) and per-kind
   timeouts (image/speech 120s, video/music 600s; overridable via `timeout_ms`).
 - Best-effort per-invocation cost reporting from response headers.
-- Optional **Agent Skill** (`skill/chutes-media`) documenting the workflow for Claude-family agents.
+- Optional **Agent Skill** (`skill/chutes-media`) documenting the describe→generate workflow
+  (auto-loaded by Claude Code; usable as reference by any agent).
 - Function-signature schema unwrapping: cords that wrap a single model param (e.g. `input_args`)
   accept the flat model on the wire; the package unwraps automatically.
 

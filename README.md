@@ -6,15 +6,15 @@
 [![Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
 
 Generate **image, video, music and speech** through [Chutes](https://chutes.ai) from inside any
-coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, Claude Desktop — and have the generated
+coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, OpenCode, Claude Desktop — and have the generated
 asset saved straight into the project you're working on.
 
 It ships as:
 
 - an **MCP server** (`chutes-media-mcp`, stdio) — the primary, universal interface,
 - a thin **CLI** (`chutes-media`) — a fallback for shells and agents without MCP support, and
-- an optional **Agent Skill** ([`skill/chutes-media`](./skill/chutes-media)) that teaches Claude-family
-  agents the workflow.
+- an optional **Agent Skill** ([`skill/chutes-media`](./skill/chutes-media)) documenting the
+  describe→generate workflow (auto-loaded by Claude Code; usable as reference by any agent).
 
 Both frontends are thin adapters over one shared, transport-agnostic core, so they behave
 identically.
@@ -117,7 +117,7 @@ running — so they land inside the project being worked on.
 claude mcp add chutes-media --env CHUTES_API_KEY=cpk_your_key -- npx -y chutes-media-mcp
 ```
 
-**Cursor / Cline / Windsurf / Claude Desktop** (generic `mcpServers` config):
+**Cursor / Cline / Windsurf / OpenCode / Claude Desktop** (generic `mcpServers` config):
 
 ```json
 {
@@ -194,9 +194,9 @@ When a model has no edit cord, only generation is available.
 
 ## Agent Skill (optional)
 
-[`skill/chutes-media`](./skill/chutes-media) is an Agent Skill that teaches Claude-family agents the
-describe→generate discipline, payload composition, editing, and cold-start handling. Install it by
-copying the folder into your skills directory:
+[`skill/chutes-media`](./skill/chutes-media) is an Agent Skill documenting the describe→generate
+discipline, payload composition, editing, and cold-start handling. Claude Code auto-loads it from your
+skills directory; install it by copying the folder there:
 
 ```bash
 cp -r skill/chutes-media ~/.claude/skills/chutes-media          # user-level
@@ -204,7 +204,8 @@ cp -r skill/chutes-media ~/.claude/skills/chutes-media          # user-level
 cp -r skill/chutes-media .claude/skills/chutes-media
 ```
 
-Non-Claude agents don't need it — they just call the tools/CLI directly.
+Agents without skill auto-loading don't need it — they just call the tools/CLI directly (and can read
+the file as reference).
 
 ---
 

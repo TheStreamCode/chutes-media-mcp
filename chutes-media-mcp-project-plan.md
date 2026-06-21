@@ -1,7 +1,7 @@
 # Chutes Media MCP — Project Plan
 
 > A standalone **MCP server** (plus a thin **CLI** and an optional **Skill**) that lets *any*
-> coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, Kun, Claude Desktop — generate
+> coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, OpenCode, Claude Desktop — generate
 > **image, video, music, and speech** through **Chutes** during its normal workflow, saving the
 > generated asset into the project the agent is working in.
 >
@@ -14,8 +14,8 @@
 
 You are building a **new, small** TypeScript package from scratch (not a fork). The design is:
 one shared **core** with all Chutes logic, exposed through **two thin frontends** (an MCP server
-over stdio, and a CLI), plus an **optional Skill** that documents the workflow for Claude-family
-agents.
+over stdio, and a CLI), plus an **optional Skill** that documents the workflow (auto-loaded by Claude
+Code; usable as reference by any agent).
 
 ```
 chutes-media-mcp/
@@ -59,7 +59,7 @@ later).
   payload, and submits it. The server owns all plumbing: auth, cold-start warmup, sync-vs-async
   handling, polling, download, saving to the workspace, light validation, and cost tracking.
 - A thin **CLI** mirroring the tools, so even agents without MCP support can call it via bash.
-- An optional **Skill** (Claude/Kun family) documenting when/how to use the tools.
+- An optional **Skill** documenting when/how to use the tools (auto-loaded by Claude Code).
 - Distribution via **npm**, runnable with `npx chutes-media-mcp`.
 
 ### Out of scope
@@ -198,10 +198,10 @@ For very long video jobs, allow non-blocking submit + later poll. Defer unless n
 - Bin entry `chutes-media`.
 - **Done when:** every MCP tool has a CLI equivalent producing parseable output.
 
-### Phase 5 — Optional Skill (Claude/Kun family)
+### Phase 5 — Optional Skill
 - `skill/`: a `SKILL.md` (+ `skill.json`) teaching the describe → call workflow, default model
   choices per kind, payload composition tips, and the "save into the project, then reference it"
-  pattern. This makes Claude-family agents more reliable; non-Claude agents just use the tools.
+  pattern. This makes skill-aware agents more reliable; other agents just use the tools.
 - **Done when:** with the Skill loaded, an agent picks the right kind and composes valid payloads
   across several models without hand-holding.
 
