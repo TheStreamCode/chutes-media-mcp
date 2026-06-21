@@ -26,7 +26,24 @@ function fail(err: unknown) {
   return { content: [{ type: "text" as const, text: formatError(err) }], isError: true };
 }
 
-const server = new McpServer({ name: "chutes-media-mcp", version: "0.1.0" });
+const INSTRUCTIONS = `Generate media (image, video, music, speech) via Chutes and save it into the user's project.
+
+Workflow — always:
+1. list_media_models — find a model for the kind (image | video | music | speech).
+2. describe_media_model — ALWAYS call before generating an unfamiliar model; it returns the model's
+   live cords with required fields, types, defaults and a ready-to-fill example.
+3. generate_media — compose a FLAT params payload from the cord's example and submit it.
+
+The saved file path is returned — reference it from the project (embed/import it). To edit existing
+media, pass a workspace file path in params (e.g. image, mask, image_b64s); the server reads and
+base64-encodes it. Cold-start 503s are retried automatically. Default output: ./assets/chutes/<kind>/.
+Never hardcode payloads — describe first.`;
+
+// Keep version in sync with package.json on release.
+const server = new McpServer(
+  { name: "chutes-media-mcp", version: "1.1.0" },
+  { instructions: INSTRUCTIONS },
+);
 
 server.registerTool(
   "list_media_models",

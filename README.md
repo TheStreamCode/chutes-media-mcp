@@ -194,18 +194,19 @@ When a model has no edit cord, only generation is available.
 
 ## Agent Skill (optional)
 
-[`skill/chutes-media`](./skill/chutes-media) is an Agent Skill documenting the describe→generate
-discipline, payload composition, editing, and cold-start handling. Claude Code auto-loads it from your
-skills directory; install it by copying the folder there:
+The MCP server already ships **instructions** (the describe→generate workflow), so any client receives
+guidance on connect — no skill required.
+
+For Claude Code you can additionally install the bundled **Agent Skill**
+([`skill/chutes-media`](./skill/chutes-media)) for richer, auto-loaded guidance:
 
 ```bash
-cp -r skill/chutes-media ~/.claude/skills/chutes-media          # user-level
-# or, per project:
-cp -r skill/chutes-media .claude/skills/chutes-media
+npx -p chutes-media-mcp chutes-media install-skill             # → ~/.claude/skills/chutes-media
+npx -p chutes-media-mcp chutes-media install-skill --project   # → ./.claude/skills/chutes-media
 ```
 
-Agents without skill auto-loading don't need it — they just call the tools/CLI directly (and can read
-the file as reference).
+(Or copy the folder into your skills directory manually.) Agents without skill auto-loading don't
+need it — the tool descriptions and server instructions already guide them.
 
 ---
 

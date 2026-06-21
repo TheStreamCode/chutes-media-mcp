@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
+import { cp } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { ChutesClient } from "../core/chutes-client.js";
 import { loadConfig } from "../core/config.js";
@@ -15,12 +18,15 @@ Usage:
   chutes-media describe <model>
   chutes-media generate --kind <k> --model <m> --params <json|@file> [--cord <c>]
                         [--output <dir>] [--filename <name>] [--timeout <ms>]
+  chutes-media install-skill [--project]
 
 Notes:
   - Set CHUTES_API_KEY in your environment first.
   - Progress is printed to stderr; the JSON result is printed to stdout.
   - --params accepts inline JSON, @path/to/file.json, or a path to a .json file.
   - Models are not hardcoded: discover them with \`list\`, inspect with \`describe\`.
+  - install-skill copies the bundled agent skill into your skills directory
+    (~/.claude/skills by default, or ./.claude/skills with --project).
 `;
 
 function buildEngine(): MediaEngine {
@@ -80,6 +86,7 @@ async function main() {
       output: { type: "string" },
       filename: { type: "string" },
       timeout: { type: "string" },
+      project: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -123,6 +130,20 @@ async function main() {
         onProgress: (e) => emitProgress(e.stage, e.message),
       });
       printResult(result);
+      return;
+    }
+
+    case "install-skill": {
+      const pkgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+      const src = path.join(pkgRoot, "skill", "chutes-media");
+      if (!existsSync(src)) throw new Error(`Bundled skill not found at ${src}`);
+      const base = values.project
+        ? path.resolve(process.cwd(), ".claude", "skills")
+        : path.join(os.homedir(), ".claude", "skills");
+      const dest = path.join(base, "chutes-media");
+      await cp(src, dest, { recursive: true });
+      emitProgress("installed", dest);
+      printResult({ installed: dest });
       return;
     }
 

@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-06-21
+
+### Added
+- MCP server `instructions`: every client now receives the describe→generate workflow guidance on
+  connect, so any coding agent knows how to use the tools without a separate skill.
+- `chutes-media install-skill [--project]` — copies the bundled agent skill into the skills directory
+  (`~/.claude/skills` by default, or `./.claude/skills` with `--project`).
+- The agent skill is now shipped inside the published package.
+
 ## [1.0.0] — 2026-06-21
 
 First stable release. Documentation and packaging polish; the public API and runtime behavior are
@@ -39,6 +48,7 @@ Initial release.
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/TheStreamCode/chutes-media-mcp/releases/tag/v0.1.0
