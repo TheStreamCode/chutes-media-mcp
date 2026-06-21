@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node >= 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
 [![npm](https://img.shields.io/npm/v/chutes-media-mcp.svg)](https://www.npmjs.com/package/chutes-media-mcp)
+[![Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
 
 Generate **image, video, music and speech** through [Chutes](https://chutes.ai) from inside any
 coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, Claude Desktop — and have the generated
@@ -216,6 +217,8 @@ report vulnerabilities.
 
 Built by **[Michael Gasperini](https://mikesoft.it)** — founder of [Mikesoft](https://mikesoft.it),
 building small, focused, privacy-aware developer tools.
+
+If this project is useful to you, consider [sponsoring its development](https://github.com/sponsors/TheStreamCode). 💛
 
 ## License
 
