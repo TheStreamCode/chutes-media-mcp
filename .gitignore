@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Secrets — never commit API keys
+.env
+.env.*
+*.key
+*.pem
+
+# Generated media (default output dir)
+assets/chutes/
+chutes-media/
+
+# Logs / OS / editor
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

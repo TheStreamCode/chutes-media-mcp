@@ -1,0 +1,66 @@
+{
+  "name": "chutes-media-mcp",
+  "version": "0.1.0",
+  "description": "MCP server + CLI to generate image, video, music and speech through Chutes, saving assets into your project.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Michael Gasperini <info@mikesoft.it> (https://mikesoft.it)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheStreamCode/chutes-media-mcp.git"
+  },
+  "homepage": "https://github.com/TheStreamCode/chutes-media-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/TheStreamCode/chutes-media-mcp/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "chutes-media-mcp": "dist/mcp/server.js",
+    "chutes-media": "dist/cli/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "chutes",
+    "image-generation",
+    "video-generation",
+    "text-to-speech",
+    "music-generation",
+    "ai"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "ajv": "^8.20.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true
+  }
+}
