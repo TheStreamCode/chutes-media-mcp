@@ -32,3 +32,6 @@ Initial release.
   (`CHUTES_AUTH_SCHEME=bearer` to use the `Bearer` prefix).
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
+
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/TheStreamCode/chutes-media-mcp/releases/tag/v0.1.0

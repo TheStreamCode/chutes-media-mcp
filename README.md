@@ -57,18 +57,39 @@ downloading, saving, light validation, and best-effort cost reporting.
 
 ## Install
 
-Run it on demand with `npx` (no install needed):
+An MCP server isn't "installed" like an app — it's registered as a **command** in your MCP client's
+config (see [Use as an MCP server](#use-as-an-mcp-server)). Pick whichever way of providing that
+command suits you:
+
+**1. `npx` from npm — recommended (no install):**
 
 ```bash
-npx chutes-media-mcp     # MCP server (stdio)
-npx chutes-media --help  # CLI
+npx chutes-media-mcp        # MCP server (stdio)
+npx -p chutes-media-mcp chutes-media --help   # CLI bin
 ```
 
-…or install globally:
+**2. Global install:**
 
 ```bash
 npm install -g chutes-media-mcp
+# then `chutes-media-mcp` (server) and `chutes-media` (CLI) are on your PATH
 ```
+
+**3. Directly from GitHub (no npm needed):** builds on install via the `prepare` script.
+
+```bash
+npx -y github:TheStreamCode/chutes-media-mcp
+```
+
+**4. From source (for development):**
+
+```bash
+git clone https://github.com/TheStreamCode/chutes-media-mcp
+cd chutes-media-mcp && npm install && npm run build
+# then point your client at: node /abs/path/dist/mcp/server.js
+```
+
+> The package ships two bins: `chutes-media-mcp` (the MCP server) and `chutes-media` (the CLI).
 
 ## Configuration
 
@@ -109,6 +130,8 @@ claude mcp add chutes-media --env CHUTES_API_KEY=cpk_your_key -- npx -y chutes-m
   }
 }
 ```
+
+> To run without npm, replace the args with `["-y", "github:TheStreamCode/chutes-media-mcp"]`.
 
 ### Tools
 
