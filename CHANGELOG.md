@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-06-21
+
+First stable release. Documentation and packaging polish; the public API and runtime behavior are
+unchanged from 0.1.0.
+
 ## [0.1.0] — 2026-06-21
 
 Initial release.
@@ -34,5 +39,6 @@ Initial release.
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/TheStreamCode/chutes-media-mcp/releases/tag/v0.1.0
