@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -9,6 +10,7 @@ import type {
   CordInfo,
   GenerateResult,
   InvokeResult,
+  JsonSchema,
   MediaKind,
   ProgressCallback,
 } from "./types.js";
@@ -108,7 +110,7 @@ export class MediaEngine {
 
     // 1. Validate before spending a GPU call.
     emit({ stage: "validating", message: `Validating params for cord "${cord.name}"` });
-    const validation = validateParams(opts.params, cord.inputSchema);
+    const validation = validateParams(opts.params, cord.inputSchema, { strict: this.config.strictParams });
     if (!validation.valid) {
       throw new ChutesError(
         `Invalid params for ${opts.model} (cord "${cord.name}"): ${validation.errors.join("; ")}`,
@@ -144,6 +146,10 @@ export class MediaEngine {
     // 5. Resolve the asset (raw bytes, or JSON carrying a URL / base64).
     const asset = await this.resolveAsset(invokeResult, opts.kind, emit);
 
+    // 5b. Verify the returned asset actually matches the kind — a 200 with the
+    // wrong media type means the call "succeeded" but produced the wrong thing.
+    assertContentTypeMatchesKind(asset.contentType, opts.kind);
+
     // 6. Save into the workspace.
     const ext = extensionFor(asset.contentType, opts.kind);
     const dir = path.resolve(cwd, opts.outputDir ?? path.join(this.config.outputDir, opts.kind));
@@ -153,6 +159,31 @@ export class MediaEngine {
     await writeFile(outPath, asset.bytes);
     emit({ stage: "saved", message: outPath, progress: 1 });
 
+    // 7. Pin what produced this asset: hash the exact schema validated against,
+    // and (optionally) write a provenance sidecar for reproducibility.
+    const schemaHash = hashSchema(cord.inputSchema);
+    const durationMs = monotonicNow() - startedAt;
+    let provenancePath: string | undefined;
+    if (this.config.writeProvenance) {
+      provenancePath = `${outPath}.json`;
+      const provenance = {
+        asset: filename,
+        kind: opts.kind,
+        model: opts.model,
+        cord: cord.name,
+        invokeUrl: url,
+        params: opts.params, // original input (paths, not the base64 we sent)
+        seed: (opts.params as Record<string, unknown>).seed,
+        schemaHash,
+        contentType: asset.contentType,
+        bytes: asset.bytes.byteLength,
+        cost: invokeResult.cost,
+        durationMs,
+        createdAt: new Date().toISOString(),
+      };
+      await writeFile(provenancePath, JSON.stringify(provenance, null, 2));
+    }
+
     return {
       path: outPath,
       kind: opts.kind,
@@ -161,7 +192,9 @@ export class MediaEngine {
       bytes: asset.bytes.byteLength,
       contentType: asset.contentType,
       cost: invokeResult.cost,
-      durationMs: monotonicNow() - startedAt,
+      durationMs,
+      schemaHash,
+      provenancePath,
     };
   }
 
@@ -422,6 +455,41 @@ export function extensionFor(contentType: string, kind: MediaKind): string {
   const sub = ct.split("/")[1];
   if (sub && /^[a-z0-9]+$/.test(sub)) return sub;
   return FALLBACK_EXT[kind];
+}
+
+const KIND_CONTENT_FAMILY: Record<MediaKind, string> = {
+  image: "image/",
+  video: "video/",
+  music: "audio/",
+  speech: "audio/",
+};
+
+/** Throw if the returned media type clearly contradicts the requested kind. */
+export function assertContentTypeMatchesKind(contentType: string, kind: MediaKind): void {
+  const ct = contentType.split(";")[0]!.trim().toLowerCase();
+  if (ct === "" || ct.endsWith("/octet-stream")) return; // opaque — can't tell
+  const family = ["image/", "video/", "audio/"].find((f) => ct.startsWith(f));
+  if (family && family !== KIND_CONTENT_FAMILY[kind]) {
+    throw new ChutesError(`Model returned ${ct}, which doesn't match the requested kind "${kind}".`, {
+      hint: "The cord may produce a different media type than expected — re-check describe_media_model.",
+    });
+  }
+}
+
+/** Stable SHA-256 fingerprint of a schema, so a provider-side change is detectable. */
+export function hashSchema(schema: JsonSchema | undefined): string | undefined {
+  if (!schema) return undefined;
+  return createHash("sha256").update(stableStringify(schema)).digest("hex");
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const keys = Object.keys(obj).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function base64ToBytes(b64: string): Uint8Array {

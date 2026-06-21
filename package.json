@@ -1,6 +1,6 @@
 {
   "name": "chutes-media-mcp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "MCP server + CLI to generate image, video, music and speech through Chutes, saving assets into your project.",
   "type": "module",
   "license": "MIT",

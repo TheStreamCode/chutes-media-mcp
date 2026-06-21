@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-06-21
+
+### Added
+- Per-run schema pinning + a `<asset>.json` provenance sidecar (model, cord, params, schema hash,
+  cost, duration) written next to each asset for reproducibility. Disable with `CHUTES_PROVENANCE=false`.
+- Strict params validation: fields not declared in the cord schema are rejected so a renamed/unknown
+  field fails loudly instead of being silently dropped. Relax with `CHUTES_ALLOW_UNKNOWN_PARAMS=true`.
+- Response guardrail: the returned media type is checked against the requested kind, so a 200 with the
+  wrong content (not just a non-200) is caught.
+- `generate_media` now returns `schemaHash` and `provenancePath`.
+
 ## [1.1.0] — 2026-06-21
 
 ### Added
@@ -48,7 +59,8 @@ Initial release.
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/TheStreamCode/chutes-media-mcp/releases/tag/v0.1.0

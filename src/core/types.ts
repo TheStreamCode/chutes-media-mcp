@@ -32,6 +32,10 @@ export interface ChutesConfig {
   coldStartRetries: number;
   /** Base backoff (ms) between cold-start retries (grows linearly per attempt). */
   coldStartBackoffMs: number;
+  /** Reject params with fields not in the cord schema (renamed/unknown fields fail loudly). */
+  strictParams: boolean;
+  /** Write a provenance sidecar (<asset>.json) next to each generated asset. */
+  writeProvenance: boolean;
 }
 
 /** One callable endpoint of a chute (e.g. /generate, /img2img, /speak). */
@@ -103,4 +107,8 @@ export interface GenerateResult {
   contentType: string;
   cost?: number;
   durationMs: number;
+  /** SHA-256 of the cord input schema used for this run (pins what was validated against). */
+  schemaHash?: string;
+  /** Path to the provenance sidecar written next to the asset, if enabled. */
+  provenancePath?: string;
 }

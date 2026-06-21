@@ -6,7 +6,9 @@ import { ChutesClient, type FetchLike } from "./chutes-client.js";
 import { loadConfig } from "./config.js";
 import {
   MediaEngine,
+  assertContentTypeMatchesKind,
   extensionFor,
+  hashSchema,
   resolveInputAssets,
   selectCord,
 } from "./media-engine.js";
@@ -117,6 +119,26 @@ describe("resolveInputAssets", () => {
   });
 });
 
+describe("assertContentTypeMatchesKind", () => {
+  it("passes matching families and opaque types", () => {
+    expect(() => assertContentTypeMatchesKind("image/png", "image")).not.toThrow();
+    expect(() => assertContentTypeMatchesKind("audio/mpeg", "music")).not.toThrow();
+    expect(() => assertContentTypeMatchesKind("application/octet-stream", "video")).not.toThrow();
+  });
+  it("throws on a clear mismatch", () => {
+    expect(() => assertContentTypeMatchesKind("audio/mpeg", "image")).toThrow(/match the requested kind/);
+  });
+});
+
+describe("hashSchema", () => {
+  it("is stable regardless of key order", () => {
+    const a = hashSchema({ type: "object", required: ["p"], properties: { p: { type: "string" } } });
+    const b = hashSchema({ properties: { p: { type: "string" } }, required: ["p"], type: "object" });
+    expect(a).toBe(b);
+    expect(a).toMatch(/^[a-f0-9]{64}$/);
+  });
+});
+
 describe("MediaEngine.generate", () => {
   it("runs the full happy path and saves the asset", async () => {
     const dir = await tmpdir();
@@ -145,6 +167,41 @@ describe("MediaEngine.generate", () => {
     expect(events.some((e) => e.stage === "warmup")).toBe(true);
     expect(events.some((e) => e.stage === "saved")).toBe(true);
     expect(ff.calls.some((u) => /warmup/.test(u))).toBe(true);
+  });
+
+  it("writes a provenance sidecar with the pinned schema hash", async () => {
+    const dir = await tmpdir();
+    const ff = router([
+      [/\/chutes\/warmup\//, () => json({})],
+      [/api\.chutes\.ai\/chutes\//, () => json(imageChute)],
+      [/myuser-my-image-gen\.chutes\.ai\/generate/, () => bytesResponse([1, 2, 3], "image/jpeg")],
+    ]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+    const res = await engine.generate({
+      model: "myuser/my-image-gen",
+      kind: "image",
+      params: { prompt: "x" },
+      cwd: dir,
+    });
+    expect(res.schemaHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(res.provenancePath).toBe(`${res.path}.json`);
+    const sidecar = JSON.parse(await readFile(res.provenancePath!, "utf8"));
+    expect(sidecar.model).toBe("myuser/my-image-gen");
+    expect(sidecar.schemaHash).toBe(res.schemaHash);
+    expect(sidecar.params).toEqual({ prompt: "x" });
+  });
+
+  it("rejects a 200 whose media type doesn't match the kind", async () => {
+    const dir = await tmpdir();
+    const ff = router([
+      [/\/chutes\/warmup\//, () => json({})],
+      [/api\.chutes\.ai\/chutes\//, () => json(imageChute)],
+      [/myuser-my-image-gen\.chutes\.ai\/generate/, () => bytesResponse([1, 2, 3], "audio/mpeg")],
+    ]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+    await expect(
+      engine.generate({ model: "myuser/my-image-gen", kind: "image", params: { prompt: "x" }, cwd: dir }),
+    ).rejects.toThrow(/match the requested kind/);
   });
 
   it("rejects an invalid payload without invoking the GPU cord", async () => {

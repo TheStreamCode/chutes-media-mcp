@@ -32,6 +32,8 @@ identically.
   payloads are never hardcoded.
 - 💾 Saves assets into your project (default `./assets/chutes/<kind>/`) and returns the path.
 - ✅ **Validates** the payload against the live schema before spending a GPU call.
+- 🧾 **Provenance + guardrails**: writes a sidecar (model, params, schema hash) next to each asset,
+  rejects unknown params, and verifies the returned media type matches what you asked for.
 - 🔁 **Automatic cold-start retry** with backoff for models scaled to zero.
 - 📡 Progress updates during long video/music jobs (MCP progress notifications / CLI stderr).
 - 🧩 Works everywhere: MCP server **or** CLI, same behavior.
@@ -103,6 +105,8 @@ cd chutes-media-mcp && npm install && npm run build
 | `CHUTES_COLD_START_RETRIES` | | `4` | Retries when a cold model returns `503 no-instances` (`0` disables). |
 | `CHUTES_COLD_START_BACKOFF_MS` | | `8000` | Base backoff between cold-start retries (grows per attempt). |
 | `CHUTES_PROGRESS_INTERVAL_MS` | | `5000` | How often progress heartbeats are emitted while a call blocks. |
+| `CHUTES_ALLOW_UNKNOWN_PARAMS` | | `false` | When `true`, allow params not in the model schema. Default rejects them so a renamed/unknown field fails loudly. |
+| `CHUTES_PROVENANCE` | | `true` | Write a `<asset>.json` provenance sidecar (model, cord, params, schema hash). Set `false` to disable. |
 
 Generated assets are saved to `./assets/chutes/<kind>/` by default, relative to wherever the agent is
 running — so they land inside the project being worked on.

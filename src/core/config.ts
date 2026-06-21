@@ -75,6 +75,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ChutesConfig {
     progressIntervalMs,
     coldStartRetries,
     coldStartBackoffMs,
+    strictParams: env.CHUTES_ALLOW_UNKNOWN_PARAMS?.toLowerCase() !== "true",
+    writeProvenance: env.CHUTES_PROVENANCE?.toLowerCase() !== "false",
   };
 }
 

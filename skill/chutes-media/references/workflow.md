@@ -101,6 +101,8 @@ The server saves the asset for you; this explains what it does so results are pr
 | `CHUTES_COLD_START_RETRIES` | `4` | Retries on cold-start `503` (0 disables). |
 | `CHUTES_COLD_START_BACKOFF_MS` | `8000` | Base backoff between retries (grows per attempt). |
 | `CHUTES_PROGRESS_INTERVAL_MS` | `5000` | Progress heartbeat interval. |
+| `CHUTES_ALLOW_UNKNOWN_PARAMS` | `false` | Allow params not in the schema (default rejects unknown/renamed fields). |
+| `CHUTES_PROVENANCE` | `true` | Write a `<asset>.json` provenance sidecar (model, params, schema hash). |
 
 ## Worked example: generate then edit
 

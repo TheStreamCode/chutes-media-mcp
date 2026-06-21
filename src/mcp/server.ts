@@ -41,7 +41,7 @@ Never hardcode payloads — describe first.`;
 
 // Keep version in sync with package.json on release.
 const server = new McpServer(
-  { name: "chutes-media-mcp", version: "1.1.0" },
+  { name: "chutes-media-mcp", version: "1.2.0" },
   { instructions: INSTRUCTIONS },
 );
 

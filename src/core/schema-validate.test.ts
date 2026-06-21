@@ -35,4 +35,11 @@ describe("validateParams", () => {
   it("does not block on an uncompilable schema", () => {
     expect(validateParams({ a: 1 }, { type: "not-a-real-type" }).valid).toBe(true);
   });
+
+  it("allows unknown fields by default but rejects them in strict mode", () => {
+    expect(validateParams({ prompt: "x", bogus: 1 }, schema).valid).toBe(true);
+    const strict = validateParams({ prompt: "x", bogus: 1 }, schema, { strict: true });
+    expect(strict.valid).toBe(false);
+    expect(strict.errors.join(" ")).toMatch(/unexpected field "bogus"/);
+  });
 });
