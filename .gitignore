@@ -10,9 +10,9 @@ dist/
 *.key
 *.pem
 
-# Generated media (default output dir)
-assets/chutes/
-chutes-media/
+# Generated media (default output dir) — root-anchored so it doesn't match skill/chutes-media/
+/assets/chutes/
+/chutes-media/
 
 # Logs / OS / editor
 *.log
