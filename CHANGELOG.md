@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Security
+- Added a root `overrides` entry pinning transitive `esbuild` to `0.28.1` to resolve the
+  `GHSA-g7r4-m6w7-qqqr` advisory (arbitrary file read in the dev server on Windows, affecting
+  `esbuild >=0.27.3 <0.28.1`). tsup 8.5.1 declares `esbuild ^0.27.0` so npm cannot auto-fix;
+  the override is narrow (esbuild only) and will be removed once tsup publishes a release that
+  depends on a non-vulnerable esbuild range.
+
 ### Changed
 - Removed the internal `chutes-media-mcp-project-plan.md` planning document from the public repository; it was never part of the shipped package and only cluttered the source tree.
 
