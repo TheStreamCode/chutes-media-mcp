@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-07-10
+
 ### Security
 - Added a root `overrides` entry pinning transitive `esbuild` to `0.28.1` to resolve the
   `GHSA-g7r4-m6w7-qqqr` advisory (arbitrary file read in the dev server on Windows, affecting
@@ -69,7 +71,8 @@ Initial release.
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v0.1.0...v1.0.0
