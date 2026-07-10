@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- Removed the internal `chutes-media-mcp-project-plan.md` planning document from the public repository; it was never part of the shipped package and only cluttered the source tree.
+
 ## [1.2.0] — 2026-06-21
 
 ### Added
