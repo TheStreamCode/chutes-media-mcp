@@ -30,7 +30,11 @@
   },
   "files": [
     "dist",
-    "skill"
+    "skill",
+    "assets/chutes-media-mcp.png",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
   ],
   "scripts": {
     "build": "tsup",

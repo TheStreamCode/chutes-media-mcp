@@ -5,6 +5,8 @@
 [![npm](https://img.shields.io/npm/v/chutes-media-mcp.svg)](https://www.npmjs.com/package/chutes-media-mcp)
 [![Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
 
+![chutes-media-mcp](./assets/chutes-media-mcp.png)
+
 Generate **image, video, music and speech** through [Chutes](https://chutes.ai) from inside any
 coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, OpenCode, Claude Desktop — and have the generated
 asset saved straight into the project you're working on.
@@ -251,4 +253,25 @@ If this project is useful to you, consider [sponsoring its development](https://
 
 ## License
 
-[MIT](./LICENSE) © Michael Gasperini (Mikesoft)
+[MIT](./LICENSE) © Michael Gasperini (Mikesoft). Project-owned code,
+documentation, and other project-created materials are MIT-licensed except for
+the third-party rights below.
+
+## Third-party notices and provider terms
+
+This independent project is not affiliated with, sponsored by, or endorsed by
+Chutes Global Corp. The Chutes name, logo, platform, services, branding, and
+related marks are the property of Chutes Global Corp or their respective
+owners. The MIT License and this project grant no rights to use them.
+
+[`assets/chutes-media-mcp.png`](./assets/chutes-media-mcp.png) is the only
+project image in this repository that incorporates Chutes logo/marks. It is one
+of exactly three user-created Chutes-logo image compositions across the Chutes
+projects; the embedded Chutes logo/marks remain the property of their owner and
+are not licensed under MIT.
+
+The MIT License does not grant rights in Chutes services or in third-party
+models, model content, or generated outputs. Their use is subject to applicable
+provider terms and model licenses. Review Chutes' official [Terms of
+Service](https://chutes.ai/terms) and [Privacy Policy](https://chutes.ai/privacy).
+See [NOTICE](./NOTICE) for the packaged notice.

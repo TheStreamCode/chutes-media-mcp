@@ -1,0 +1,22 @@
+# Third-Party Notices
+
+Except for the third-party rights identified below, project-owned source code,
+documentation, and other project-created materials are licensed under the MIT
+License in [LICENSE](./LICENSE).
+
+This independent project is not affiliated with, sponsored by, or endorsed by
+Chutes Global Corp. The Chutes name, logo, platform, services, branding, and
+related marks are the property of Chutes Global Corp or their respective
+owners. The MIT License and this project grant no rights to use them.
+
+`assets/chutes-media-mcp.png` is the only project image in this repository
+that incorporates Chutes logo/marks. It is one of exactly three user-created
+Chutes-logo image compositions across the Chutes projects; the embedded Chutes
+logo/marks remain the property of their owner and are not licensed under MIT.
+
+The MIT License does not grant rights in Chutes services or in third-party
+models, model content, or generated outputs. Their use is subject to applicable
+provider terms and model licenses.
+
+Chutes official legal information: [Terms of Service](https://chutes.ai/terms)
+and [Privacy Policy](https://chutes.ai/privacy).
