@@ -1,7 +1,7 @@
 # chutes-media-mcp
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node >= 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
+[![Node >= 20.3](https://img.shields.io/badge/node-%3E%3D20.3-brightgreen.svg)](https://nodejs.org)
 [![npm](https://img.shields.io/npm/v/chutes-media-mcp.svg)](https://www.npmjs.com/package/chutes-media-mcp)
 [![Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
 
@@ -56,7 +56,8 @@ downloading, saving, light validation, and best-effort cost reporting.
 
 ## Requirements
 
-- **Node.js ≥ 20**
+- **Node.js ≥ 20.3** for the published MCP server and CLI
+- Contributors using the locked Vite/Vitest toolchain need **Node.js ^20.19.0 or ≥ 22.12.0**
 - A **Chutes API key** (`CHUTES_API_KEY`). Create one in your Chutes account.
 
 ## Install

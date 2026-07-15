@@ -14,7 +14,7 @@
     "url": "https://github.com/TheStreamCode/chutes-media-mcp/issues"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.3.0"
   },
   "bin": {
     "chutes-media-mcp": "dist/mcp/server.js",
@@ -61,7 +61,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^26.0.0",
+    "@types/node": "^20.19.43",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"

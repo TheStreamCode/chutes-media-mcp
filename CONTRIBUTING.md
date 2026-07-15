@@ -27,7 +27,8 @@ always fetch and validate against the live schema.
 
 ## Development setup
 
-Requires **Node.js ≥ 20**.
+The published MCP server and CLI support **Node.js ≥ 20.3**. The locked Vite/Vitest development
+toolchain requires **Node.js ^20.19.0 or ≥ 22.12.0**.
 
 ```bash
 npm install
