@@ -1,0 +1,63 @@
+name: Dependabot auto-merge
+
+on: pull_request
+
+# Workflows triggered by Dependabot get a read-only token unless the required
+# scopes are declared here explicitly.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Deliberately narrow: GitHub Actions bumps and development dependencies only,
+      # and only patch/minor. Runtime dependencies and every major stay manual, because
+      # this repository publishes to a public registry -- third-party code must never
+      # reach users without a human having looked at it.
+      - name: Apply merge policy
+        id: policy
+        env:
+          ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}
+          DEPENDENCY_TYPE: ${{ steps.metadata.outputs.dependency-type }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        run: |
+          eligible=false
+
+          case "$UPDATE_TYPE" in
+            version-update:semver-patch | version-update:semver-minor)
+              if [ "$ECOSYSTEM" = "github_actions" ] || [ "$DEPENDENCY_TYPE" = "direct:development" ]; then
+                eligible=true
+              fi
+              ;;
+          esac
+
+          echo "eligible=$eligible" >> "$GITHUB_OUTPUT"
+          echo "$ECOSYSTEM / $DEPENDENCY_TYPE / $UPDATE_TYPE -> eligible=$eligible"
+
+      # Branch protection requires an approving review, so auto-merge alone would stall.
+      # github-actions[bot] is a distinct identity from dependabot[bot], so this is not
+      # a pull request approving itself.
+      - name: Approve
+        if: steps.policy.outputs.eligible == 'true'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr review --approve "$PR_URL"
+
+      # --auto waits for the required status checks; it does not merge on the spot.
+      - name: Enable auto-merge
+        if: steps.policy.outputs.eligible == 'true'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "$PR_URL"
