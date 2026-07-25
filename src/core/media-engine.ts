@@ -377,9 +377,20 @@ export async function resolveInputAssets(
 async function maybeEncodeFile(value: string, cwd: string): Promise<string | undefined> {
   if (value.length > 1024 || value.includes("\n")) return undefined; // clearly not a path
   const resolved = path.resolve(cwd, value);
+  if (!isInsideWorkspace(resolved, cwd)) return undefined;
   if (!existsSync(resolved)) return undefined;
   const bytes = await readFile(resolved);
   return bytes.toString("base64");
+}
+
+/**
+ * True when `resolved` is `root` itself or lives under it. Params reach this
+ * code straight from the model, so an absolute path or a `../` escape would
+ * otherwise read any file on the machine and upload it to a third-party chute.
+ */
+export function isInsideWorkspace(resolved: string, root: string): boolean {
+  const rel = path.relative(path.resolve(root), resolved);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }
 
 // ---------------------------------------------------------------------------

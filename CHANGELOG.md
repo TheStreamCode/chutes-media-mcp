@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.2.2] — 2026-07-25
+
+### Security
+- **Credential leak to lookalike domains.** `isChutesHost` matched the asset URL with a bare
+  `hostname.endsWith("chutes.ai")`, so hosts such as `evilchutes.ai` satisfied it and the
+  `Authorization` header — carrying `CHUTES_API_KEY` — was attached to the download. The asset URL
+  comes from the invoked chute's own response and the server lists public chutes by design, so any
+  third-party chute could harvest the key by returning a crafted URL. The check now requires the
+  apex host or a real subdomain.
+- **Arbitrary file read and upload.** `maybeEncodeFile` resolved every non-text string param against
+  the workspace with no containment, so an absolute path or a `../` escape (`/etc/passwd`,
+  `../../.ssh/id_rsa`) was read, base64-encoded and sent to the third-party model. Params come
+  straight from the model, so the value was not user-controlled. Resolved paths are now required to
+  stay inside the workspace root.
+- Both fixes are covered by regression tests in `test/credential-scope.test.ts`.
+
+### Fixed
+- The server announced version `1.2.0` in the MCP handshake while the package shipped as `1.2.1`.
+  The version is now read from `package.json` instead of being duplicated as a literal.
+
 ## [1.2.1] — 2026-07-10
 
 ### Security

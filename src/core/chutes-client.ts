@@ -439,9 +439,13 @@ function parseCostHeader(headers: Headers): number | undefined {
   return undefined;
 }
 
-function isChutesHost(url: string): boolean {
+export function isChutesHost(url: string): boolean {
   try {
-    return new URL(url).hostname.endsWith("chutes.ai");
+    // Must match the apex host or a real subdomain of it. A bare `endsWith`
+    // would also accept lookalike domains such as `evilchutes.ai`, which would
+    // leak the API key to whoever registered them.
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "chutes.ai" || host.endsWith(".chutes.ai");
   } catch {
     return false;
   }

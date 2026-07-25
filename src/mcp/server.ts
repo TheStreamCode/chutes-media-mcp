@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -39,9 +40,12 @@ media, pass a workspace file path in params (e.g. image, mask, image_b64s); the 
 base64-encodes it. Cold-start 503s are retried automatically. Default output: ./assets/chutes/<kind>/.
 Never hardcode payloads — describe first.`;
 
-// Keep version in sync with package.json on release.
+// Read from package.json rather than duplicating the literal: the hand-kept
+// copy silently drifted (server announced 1.2.0 while npm shipped 1.2.1).
+const { version } = createRequire(import.meta.url)("../../package.json") as { version: string };
+
 const server = new McpServer(
-  { name: "chutes-media-mcp", version: "1.2.0" },
+  { name: "chutes-media-mcp", version },
   { instructions: INSTRUCTIONS },
 );
 
