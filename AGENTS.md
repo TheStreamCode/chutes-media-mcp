@@ -112,8 +112,9 @@ any change here as security-relevant and keep the regression tests in `test/cred
 passing.
 
 - `core/chutes-client.ts`: `isChutesHost`, `isSecureChutesUrl`, `isSafeAssetUrl`, `isPublicIpv4`,
-  `isPublicIpv6`, `assertPublicAssetDestination`, the manual redirect loop in `download`, and
-  `readResponseBytes`. The API key may only ever reach **HTTPS `chutes.ai` / `*.chutes.ai`** hosts.
+  `isPublicIpv6`, `assertPublicAssetDestination`, `redactUrlForDisplay`, the manual redirect loop in
+  `download`, and `readResponseBytes`. The API key may only ever reach **HTTPS `chutes.ai` /
+  `*.chutes.ai`** hosts, and signed asset URL queries/fragments must never appear in errors.
   A bare `endsWith("chutes.ai")` once leaked the key to lookalike domains — do not reintroduce it.
 - `core/media-engine.ts`: `isInsideWorkspace`, `prepareOutputDirectory`, `assertSafeOverwriteTarget`,
   `maybeEncodeFile`, `validateFilename`, `base64ToBytes`. Params come straight from a third-party
@@ -132,6 +133,7 @@ Nothing below may change without an explicit, authorised **major** version bump:
   `--model`, `--limit`, `--params`, `--cord`, `--output`, `--filename`, `--timeout`, `--overwrite`,
   `--project`).
 - The exported surface in `src/index.ts` and the shape of `GenerateResult`.
+- The MCP text results and their matching `outputSchema` / `structuredContent` objects.
 - The two bin names, `engines.node`, and the default output directory `assets/chutes/<kind>/`.
 - Defaults that users depend on (`CHUTES_*` defaults listed in the README).
 

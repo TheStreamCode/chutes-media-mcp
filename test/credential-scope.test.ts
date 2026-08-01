@@ -44,6 +44,7 @@ describe("isSafeAssetUrl", () => {
   it("accepts public HTTPS URLs", () => {
     expect(isSafeAssetUrl("https://cdn.chutes.ai/asset.png")).toBe(true);
     expect(isSafeAssetUrl("https://8.8.8.8/asset.png")).toBe(true);
+    expect(isSafeAssetUrl("https://[2606:4700:4700::1111]/asset.png")).toBe(true);
   });
 
   it("rejects cleartext, credentials, localhost, and private IP ranges", () => {
@@ -53,6 +54,15 @@ describe("isSafeAssetUrl", () => {
     expect(isSafeAssetUrl("https://127.0.0.1/asset.png")).toBe(false);
     expect(isSafeAssetUrl("https://10.0.0.1/asset.png")).toBe(false);
     expect(isSafeAssetUrl("https://[::1]/asset.png")).toBe(false);
+  });
+
+  it("rejects non-public special-use IP ranges", () => {
+    expect(isSafeAssetUrl("https://192.0.2.1/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://198.51.100.1/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://203.0.113.1/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://[2001:db8::1]/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://[2002:7f00:1::]/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://[fec0::1]/asset.png")).toBe(false);
   });
 });
 

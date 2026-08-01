@@ -197,6 +197,25 @@ describe("ChutesClient.download", () => {
     await expect(client.download("https://cdn.chutes.ai/start")).rejects.toThrow(/unsafe URL/);
     expect(ff.calls).toHaveLength(1);
   });
+
+  it("redacts signed query parameters from network errors", async () => {
+    const signedUrl = "https://assets.example/output.png?token=super-secret#fragment";
+    const ff = fakeFetch(() => {
+      throw new Error(`fetch failed for ${signedUrl}`);
+    });
+    const client = new ChutesClient(makeConfig(), ff, () => Promise.resolve(["8.8.8.8"]));
+
+    try {
+      await client.download(signedUrl);
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(ChutesError);
+      const message = (error as Error).message;
+      expect(message).toContain("https://assets.example/output.png");
+      expect(message).not.toContain("super-secret");
+      expect(message).not.toContain("fragment");
+    }
+  });
 });
 
 describe("ChutesClient error mapping", () => {

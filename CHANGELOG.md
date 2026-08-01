@@ -8,7 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [2.0.2] — 2026-08-01
 
-Documentation and repository hygiene only. No runtime, API or dependency changes.
+Backward-compatible security hardening, MCP metadata, documentation, and repository hygiene. No
+tool/CLI input or result fields changed, and no dependencies were added or updated.
+
+### Security
+
+- Redact query strings and fragments from network-error messages so signed asset URL credentials do
+  not leak into MCP or CLI logs.
+- Reject additional IPv4 and IPv6 special-purpose ranges as asset download targets, including
+  documentation, ORCHID, site-local, and deprecated 6to4 addresses.
 
 ### Fixed
 
@@ -18,6 +26,8 @@ Documentation and repository hygiene only. No runtime, API or dependency changes
 
 ### Changed
 
+- Publish explicit MCP output schemas and duplicate each JSON text result in `structuredContent` for
+  clients that support typed tool results. Mark the two read-only tools explicitly non-destructive.
 - Add `AGENTS.md`: a project-specific contributor/AI-agent guide covering the architecture, the real
   npm scripts, the security-critical code paths, the deliberately pinned dependencies (the coupled
   `overrides.esbuild` / `allowScripts` pair, `@types/node`, `zod`, `typescript`), the versioning and

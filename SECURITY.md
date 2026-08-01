@@ -31,7 +31,10 @@ Security fixes are applied to the latest published release. Please upgrade to th
 - Outputs are written only inside the current workspace. A `filename` must be a single portable file
   name, and replacing an existing asset requires an explicit `overwrite` option.
 - Asset downloads require HTTPS. Explicit private/local addresses, DNS resolutions to non-public
-  addresses, credential-bearing URLs, and unsafe redirect destinations are rejected.
+  addresses, IPv4/IPv6 special-purpose ranges, credential-bearing URLs, and unsafe redirect
+  destinations are rejected.
+- Network-error messages retain the destination origin and path for troubleshooting but omit query
+  strings and fragments, which commonly carry credentials in signed asset URLs.
 - Remote responses and local input assets are subject to a configurable size limit before being
   retained in memory.
 - These controls reduce accidental and model-driven data exposure; they do not make an untrusted

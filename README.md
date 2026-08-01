@@ -172,6 +172,9 @@ claude mcp add chutes-media --env CHUTES_API_KEY=cpk_your_key -- npx -y chutes-m
   payload was validated against; `provenancePath` points at the sidecar (omitted when
   `CHUTES_PROVENANCE=false`).
 
+Each tool publishes an output schema and returns the same JSON object both as text and as MCP
+`structuredContent`, so clients can consume typed results without parsing the text representation.
+
 ### Example agent workflow
 
 > "Generate a hero image of a misty mountain range and drop it into the landing page."
@@ -268,7 +271,8 @@ npm run check
 
 Never commit your API key. Credential-bearing requests are limited to HTTPS Chutes hosts, remote
 asset URLs are screened against private-network destinations, and file access is contained to the
-workspace. See [SECURITY.md](./SECURITY.md) for details and vulnerability reporting.
+workspace. Query strings and fragments are removed from network-error messages so signed asset URLs
+are not copied into logs. See [SECURITY.md](./SECURITY.md) for details and vulnerability reporting.
 
 ## Author
 

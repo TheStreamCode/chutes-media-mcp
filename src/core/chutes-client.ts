@@ -445,16 +445,19 @@ async function mapHttpError(res: Response): Promise<ChutesError> {
 }
 
 function mapNetworkError(err: unknown, url: string): ChutesError {
+  const displayUrl = redactUrlForDisplay(url);
   if (err instanceof DOMException && err.name === "TimeoutError") {
-    return new ChutesError(`Request timed out: ${url}`, {
+    return new ChutesError(`Request timed out: ${displayUrl}`, {
       hint: "Increase the per-call timeout, or warm the model up first.",
     });
   }
   if (err instanceof DOMException && err.name === "AbortError") {
-    return new ChutesError(`Request aborted: ${url}`);
+    return new ChutesError(`Request aborted: ${displayUrl}`);
   }
   const message = err instanceof Error ? err.message : String(err);
-  return new ChutesError(`Network error reaching ${url}: ${message}`);
+  return new ChutesError(
+    `Network error reaching ${displayUrl}: ${message.replaceAll(url, displayUrl)}`,
+  );
 }
 
 async function safeReadBody(res: Response): Promise<unknown> {
@@ -582,19 +585,31 @@ function isPublicIpv4(hostname: string): boolean {
   if (a === 169 && b === 254) return false;
   if (a === 172 && b >= 16 && b <= 31) return false;
   if (a === 192 && (b === 0 || b === 168)) return false;
+  if (a === 192 && b === 88 && octets[2] === 99) return false;
   if (a === 198 && (b === 18 || b === 19)) return false;
+  if (a === 198 && b === 51 && octets[2] === 100) return false;
+  if (a === 203 && b === 0 && octets[2] === 113) return false;
   return true;
 }
 
 function isPublicIpv6(hostname: string): boolean {
   const value = hostname.toLowerCase();
-  if (value === "::" || value === "::1") return false;
-  if (value.startsWith("fc") || value.startsWith("fd") || /^fe[89ab]/.test(value)) return false;
-  if (value.startsWith("ff")) return false;
-  if (value.startsWith("::ffff:")) {
-    const mapped = value.slice("::ffff:".length);
-    return isIP(mapped) === 4 && isPublicIpv4(mapped);
+  if (value.startsWith("::ffff:")) return false;
+
+  // Public Internet destinations use IPv6 global unicast (2000::/3). This
+  // rejects loopback, unspecified, link/site-local, ULA and multicast ranges
+  // without relying on a collection of easy-to-miss textual spellings.
+  const groups = value.split(":");
+  const first = Number.parseInt(groups[0] ?? "", 16);
+  if (!Number.isFinite(first) || first < 0x2000 || first > 0x3fff) return false;
+
+  // Special-purpose ranges within 2000::/3 are not public asset destinations.
+  const second = Number.parseInt(groups[1] || "0", 16);
+  if (first === 0x2001) {
+    if (second === 0 || second === 2 || second === 0xdb8) return false;
+    if (second >= 0x10 && second <= 0x2f) return false; // ORCHID / ORCHIDv2
   }
+  if (first === 0x2002) return false; // deprecated 6to4 can tunnel to private IPv4
   return true;
 }
 
@@ -607,6 +622,20 @@ function isPublicIp(address: string): boolean {
 
 function truncate(s: string, max = 300): string {
   return s.length > max ? `${s.slice(0, max)}…` : s;
+}
+
+/** Keep network errors actionable without logging signed query parameters. */
+function redactUrlForDisplay(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.username = "";
+    parsed.password = "";
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return "<invalid URL>";
+  }
 }
 
 async function readResponseBytes(res: Response, maxBytes: number): Promise<Uint8Array> {

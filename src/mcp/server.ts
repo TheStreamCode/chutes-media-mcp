@@ -20,8 +20,12 @@ function getEngine(): MediaEngine {
   return engine;
 }
 
-function ok(data: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+function ok(data: object) {
+  const structuredContent = { ...data } as Record<string, unknown>;
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+    structuredContent,
+  };
 }
 function fail(err: unknown) {
   return { content: [{ type: "text" as const, text: formatError(err) }], isError: true };
@@ -59,8 +63,13 @@ server.registerTool(
       query: z.string().max(200).optional().describe("Free-text filter on the model name."),
       limit: z.number().int().positive().max(200).optional(),
     },
+    outputSchema: {
+      count: z.number().int().nonnegative(),
+      models: z.array(z.record(z.unknown())),
+    },
     annotations: {
       readOnlyHint: true,
+      destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
     },
@@ -87,8 +96,17 @@ server.registerTool(
     inputSchema: {
       model: z.string().min(1).max(512).describe("Model name/slug, e.g. owner/model-slug."),
     },
+    outputSchema: {
+      model: z.string(),
+      kind: z.string().optional(),
+      tagline: z.string().optional(),
+      invokeBaseUrl: z.string().optional(),
+      cords: z.array(z.record(z.unknown())),
+      supportsEditing: z.boolean(),
+    },
     annotations: {
       readOnlyHint: true,
+      destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
     },
@@ -128,6 +146,18 @@ server.registerTool(
         .boolean()
         .optional()
         .describe("Explicitly replace an existing asset and sidecar."),
+    },
+    outputSchema: {
+      path: z.string(),
+      kind: z.enum(["image", "video", "music", "speech"]),
+      model: z.string(),
+      cord: z.string(),
+      bytes: z.number().int().nonnegative(),
+      contentType: z.string(),
+      cost: z.number().optional(),
+      durationMs: z.number().nonnegative(),
+      schemaHash: z.string().length(64).optional(),
+      provenancePath: z.string().optional(),
     },
     annotations: {
       readOnlyHint: false,
