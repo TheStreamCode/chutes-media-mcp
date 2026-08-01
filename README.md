@@ -167,8 +167,10 @@ claude mcp add chutes-media --env CHUTES_API_KEY=cpk_your_key -- npx -y chutes-m
   minimal example payload, and a top-level `supportsEditing`. Call this before generating.
 - **`generate_media`** — `{ model, kind, params, cord?, output_dir?, filename?, timeout_ms?, overwrite? }` →
   runs the generation and returns
-  `{ path, kind, model, cord, bytes, contentType, cost?, durationMs }`. `params` is what you composed
-  from the described schema.
+  `{ path, kind, model, cord, bytes, contentType, cost?, durationMs, schemaHash?, provenancePath? }`.
+  `params` is what you composed from the described schema. `schemaHash` pins the exact cord schema the
+  payload was validated against; `provenancePath` points at the sidecar (omitted when
+  `CHUTES_PROVENANCE=false`).
 
 ### Example agent workflow
 

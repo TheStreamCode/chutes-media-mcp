@@ -41,7 +41,10 @@ Follow these steps for every generation request:
    server warms the model, invokes it (blocking, with progress updates), retries transient cold-start
    `503`s automatically, downloads the asset, and saves it under `./assets/chutes/<kind>/` by
    default. Outputs must remain inside the workspace; set `overwrite: true` only when replacement is
-   intentional. It returns `{ path, kind, model, cord, bytes, contentType, cost?, durationMs }`.
+   intentional. It returns
+   `{ path, kind, model, cord, bytes, contentType, cost?, durationMs, schemaHash?, provenancePath? }`
+   — `schemaHash` pins the cord schema the payload was validated against, and `provenancePath` is the
+   sidecar written next to the asset (omitted when provenance is disabled).
 
 5. **Reference** — Use the returned `path` in the project: embed the image in HTML/Markdown, wire the
    audio/video into the app, etc. Prefer a path relative to the project when referencing it in code.
