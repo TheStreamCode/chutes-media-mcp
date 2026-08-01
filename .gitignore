@@ -5,11 +5,18 @@ node_modules/
 dist/
 coverage/
 
+# Packaging output (`npm pack` writes the tarball into the repo root)
+*.tgz
+
 # Secrets — never commit API keys
 .env
 .env.*
 *.key
 *.pem
+
+# Registry credentials: a local .npmrc usually carries an auth token.
+# Use `git add -f .npmrc` if a token-free project .npmrc is ever needed.
+.npmrc
 
 # Generated media (default output dir) — root-anchored so it doesn't match skill/chutes-media/
 /assets/chutes/
