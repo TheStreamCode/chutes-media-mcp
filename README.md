@@ -4,7 +4,6 @@
 [![Node >= 20.3](https://img.shields.io/badge/node-%3E%3D20.3-brightgreen.svg)](https://nodejs.org)
 [![npm](https://img.shields.io/npm/v/chutes-media-mcp.svg)](https://www.npmjs.com/package/chutes-media-mcp)
 [![CI](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/codeql.yml)
 [![Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
 
 ![chutes-media-mcp](https://raw.githubusercontent.com/TheStreamCode/chutes-media-mcp/main/assets/chutes-media-mcp.png)
