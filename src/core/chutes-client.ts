@@ -1,3 +1,5 @@
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { authHeaderValue } from "./config.js";
 import type {
   ChuteDetail,
@@ -10,10 +12,13 @@ import type {
 } from "./types.js";
 
 /** Minimal fetch shape so the client can be unit-tested without the network. */
-export type FetchLike = (
-  input: string | URL,
-  init?: RequestInit,
-) => Promise<Response>;
+export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
+
+/** DNS resolver shape kept injectable so SSRF checks remain deterministic in tests. */
+export type ResolveHost = (hostname: string) => Promise<readonly string[]>;
+
+const resolveHost: ResolveHost = async (hostname) =>
+  (await lookup(hostname, { all: true, verbatim: true })).map(({ address }) => address);
 
 export class ChutesError extends Error {
   override name = "ChutesError";
@@ -47,14 +52,22 @@ interface InvokeParams {
 }
 
 const MANAGEMENT_TIMEOUT_MS = 30_000;
+const MAX_ASSET_REDIRECTS = 5;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 export class ChutesClient {
   private readonly config: ChutesConfig;
   private readonly fetchImpl: FetchLike;
+  private readonly resolveHost: ResolveHost;
 
-  constructor(config: ChutesConfig, fetchImpl: FetchLike = globalThis.fetch) {
+  constructor(
+    config: ChutesConfig,
+    fetchImpl: FetchLike = globalThis.fetch,
+    resolver: ResolveHost = resolveHost,
+  ) {
     this.config = config;
     this.fetchImpl = fetchImpl;
+    this.resolveHost = resolver;
   }
 
   /** List media chutes, optionally filtered by kind / free-text query. */
@@ -101,6 +114,11 @@ export class ChutesClient {
 
   /** Invoke a cord on a chute's subdomain and return the raw response bytes. */
   async invoke(params: InvokeParams): Promise<InvokeResult> {
+    if (!isSecureChutesUrl(params.url)) {
+      throw new ChutesError("Refusing to send the Chutes API key to an untrusted invocation URL.", {
+        hint: "Invocation URLs must use HTTPS on chutes.ai or one of its subdomains.",
+      });
+    }
     let res: Response;
     try {
       res = await this.fetchImpl(params.url, {
@@ -112,6 +130,7 @@ export class ChutesClient {
         },
         body: JSON.stringify(params.body),
         signal: params.signal,
+        redirect: "error",
       });
     } catch (err) {
       throw mapNetworkError(err, params.url);
@@ -119,27 +138,64 @@ export class ChutesClient {
     if (!res.ok) throw await mapHttpError(res);
     const contentType = res.headers.get("content-type") ?? "application/octet-stream";
     const cost = parseCostHeader(res.headers);
-    const bytes = new Uint8Array(await res.arrayBuffer());
+    const bytes = await readResponseBytes(res, this.config.maxAssetBytes);
     return { bytes, contentType, cost };
   }
 
   /** Download an asset referenced by a result URL (e.g. a CDN link). */
   async download(assetUrl: string): Promise<InvokeResult> {
-    const headers: Record<string, string> = { Accept: "*/*" };
-    if (isChutesHost(assetUrl)) headers.Authorization = authHeaderValue(this.config);
-    let res: Response;
-    try {
-      res = await this.fetchImpl(assetUrl, {
-        headers,
-        signal: AbortSignal.timeout(MANAGEMENT_TIMEOUT_MS),
-      });
-    } catch (err) {
-      throw mapNetworkError(err, assetUrl);
+    const signal = AbortSignal.timeout(MANAGEMENT_TIMEOUT_MS);
+    let currentUrl = assetUrl;
+
+    for (let redirects = 0; redirects <= MAX_ASSET_REDIRECTS; redirects++) {
+      const parsed = parseSafeAssetUrl(currentUrl);
+      await this.assertPublicAssetDestination(parsed);
+      const headers: Record<string, string> = { Accept: "*/*" };
+      if (isSecureChutesUrl(parsed.toString())) {
+        headers.Authorization = authHeaderValue(this.config);
+      }
+
+      let res: Response;
+      try {
+        res = await this.fetchImpl(parsed, {
+          headers,
+          signal,
+          redirect: "manual",
+        });
+      } catch (err) {
+        throw mapNetworkError(err, parsed.toString());
+      }
+
+      if (REDIRECT_STATUSES.has(res.status)) {
+        const location = res.headers.get("location");
+        if (!location) throw await mapHttpError(res);
+        if (redirects === MAX_ASSET_REDIRECTS) {
+          throw new ChutesError(`Asset download exceeded ${MAX_ASSET_REDIRECTS} redirects.`);
+        }
+        currentUrl = new URL(location, parsed).toString();
+        continue;
+      }
+
+      if (!res.ok) throw await mapHttpError(res);
+      const contentType = res.headers.get("content-type") ?? "application/octet-stream";
+      const bytes = await readResponseBytes(res, this.config.maxAssetBytes);
+      return { bytes, contentType };
     }
-    if (!res.ok) throw await mapHttpError(res);
-    const contentType = res.headers.get("content-type") ?? "application/octet-stream";
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    return { bytes, contentType };
+
+    throw new ChutesError("Asset download failed after redirect validation.");
+  }
+
+  private async assertPublicAssetDestination(url: URL): Promise<void> {
+    if (isChutesHost(url.toString()) || isIP(url.hostname.replace(/^\[|\]$/g, "")) !== 0) return;
+    let addresses: readonly string[];
+    try {
+      addresses = await this.resolveHost(url.hostname);
+    } catch {
+      throw new ChutesError(`Could not resolve asset host "${url.hostname}".`);
+    }
+    if (addresses.length === 0 || addresses.some((address) => !isPublicIp(address))) {
+      throw new ChutesError("Refusing to download an asset from a non-public network address.");
+    }
   }
 
   private async getJson(url: URL): Promise<unknown> {
@@ -152,6 +208,7 @@ export class ChutesClient {
           Accept: "application/json",
         },
         signal: AbortSignal.timeout(MANAGEMENT_TIMEOUT_MS),
+        redirect: "error",
       });
     } catch (err) {
       throw mapNetworkError(err, url.toString());
@@ -209,24 +266,22 @@ function parseDetail(data: unknown): ChuteDetail {
 function parseCords(raw: Record<string, unknown>): CordInfo[] {
   const list = raw.cords;
   if (!Array.isArray(list)) return [];
-  return list
-    .filter(isObject)
-    .map((c): CordInfo => {
-      const path = pickString(c, "public_api_path") ?? pickString(c, "path") ?? "/";
-      const method = (
-        pickString(c, "public_api_method") ??
-        pickString(c, "method") ??
-        "POST"
-      ).toUpperCase();
-      return {
-        name: cordName(path, c),
-        path: path.startsWith("/") ? path : `/${path}`,
-        method,
-        stream: c.stream === true,
-        outputContentType: pickString(c, "output_content_type"),
-        inputSchema: unwrapSchema(pickSchema(c)),
-      };
-    });
+  return list.filter(isObject).map((c): CordInfo => {
+    const path = pickString(c, "public_api_path") ?? pickString(c, "path") ?? "/";
+    const method = (
+      pickString(c, "public_api_method") ??
+      pickString(c, "method") ??
+      "POST"
+    ).toUpperCase();
+    return {
+      name: cordName(path, c),
+      path: path.startsWith("/") ? path : `/${path}`,
+      method,
+      stream: c.stream === true,
+      outputContentType: pickString(c, "output_content_type"),
+      inputSchema: unwrapSchema(pickSchema(c)),
+    };
+  });
 }
 
 /**
@@ -240,7 +295,7 @@ function parseCords(raw: Record<string, unknown>): CordInfo[] {
 function unwrapSchema(schema: JsonSchema | undefined): JsonSchema | undefined {
   if (!schema) return schema;
   const top = derefLocal(schema, schema);
-  const props = isObject(top.properties) ? (top.properties as Record<string, unknown>) : undefined;
+  const props = isObject(top.properties) ? top.properties : undefined;
   if (!props) return schema;
   const keys = Object.keys(props);
   if (keys.length !== 1) return schema;
@@ -253,16 +308,21 @@ function unwrapSchema(schema: JsonSchema | undefined): JsonSchema | undefined {
 }
 
 /** Resolve a local `#/definitions/...` / `#/$defs/...` $ref against the root schema. */
-function derefLocal(node: unknown, root: Record<string, unknown>): Record<string, unknown> {
+function derefLocal(
+  node: unknown,
+  root: Record<string, unknown>,
+  seen: ReadonlySet<string> = new Set(),
+): Record<string, unknown> {
   if (!isObject(node)) return {};
   const ref = node.$ref;
   if (typeof ref === "string" && ref.startsWith("#/")) {
+    if (seen.has(ref)) return node;
     let cur: unknown = root;
     for (const seg of ref.slice(2).split("/")) {
       if (!isObject(cur)) return node;
       cur = cur[seg];
     }
-    if (isObject(cur)) return derefLocal(cur, root);
+    if (isObject(cur)) return derefLocal(cur, root, new Set([...seen, ref]));
   }
   return node;
 }
@@ -288,11 +348,14 @@ function resolveInvokeBaseUrl(
   raw: Record<string, unknown>,
   summary: ChuteSummary,
 ): string | undefined {
-  const explicit =
-    pickString(raw, "invocation_url") ??
-    pickString(raw, "invoke_url") ??
-    pickString(raw, "subdomain");
+  const explicit = pickString(raw, "invocation_url") ?? pickString(raw, "invoke_url");
   if (explicit) return explicit.replace(/\/+$/, "");
+  const subdomain = pickString(raw, "subdomain");
+  if (subdomain) {
+    if (/^https?:\/\//i.test(subdomain)) return subdomain.replace(/\/+$/, "");
+    const label = subdomain.replace(/^\.+|\.+$/g, "");
+    if (label) return `https://${label}.chutes.ai`;
+  }
   // Chutes' `slug` is the full subdomain label and already includes the owner
   // (e.g. "vonkaiser-qwen-image-2512"). Use it directly; only prepend the
   // username if the slug doesn't already start with it.
@@ -310,18 +373,22 @@ export function inferKind(input: {
   tagline?: string;
   cords: CordInfo[];
 }): MediaKind | undefined {
-  const cordText = input.cords
-    .map((c) => `${c.path} ${c.outputContentType ?? ""}`)
-    .join(" ");
+  const cordText = input.cords.map((c) => `${c.path} ${c.outputContentType ?? ""}`).join(" ");
   const text = `${input.template ?? ""} ${input.tagline ?? ""} ${cordText}`.toLowerCase();
   const outputs = input.cords.map((c) => c.outputContentType?.toLowerCase() ?? "");
 
-  if (outputs.some((o) => o.startsWith("video/")) || /\bvideo\b|text2video|image2video/.test(text)) {
+  if (
+    outputs.some((o) => o.startsWith("video/")) ||
+    /\bvideo\b|text2video|image2video/.test(text)
+  ) {
     return "video";
   }
   if (/\b(tts|text-to-speech|speech|voice|speak)\b/.test(text)) return "speech";
   if (/\b(music|song|melody|diffrhythm|ace-step)\b/.test(text)) return "music";
-  if (outputs.some((o) => o.startsWith("image/")) || /\bimage\b|diffusion|flux|text2image|sdxl/.test(text)) {
+  if (
+    outputs.some((o) => o.startsWith("image/")) ||
+    /\bimage\b|diffusion|flux|text2image|sdxl/.test(text)
+  ) {
     return "image";
   }
   // Audio output with no clearer signal: assume music over speech.
@@ -370,7 +437,10 @@ async function mapHttpError(res: Response): Promise<ChutesError> {
           hint: "Transient — retry. If a cold start, warmup may still be in progress.",
         });
       }
-      return new ChutesError(`Request failed (${res.status})${detail}`, { status: res.status, body });
+      return new ChutesError(`Request failed (${res.status})${detail}`, {
+        status: res.status,
+        body,
+      });
   }
 }
 
@@ -405,7 +475,8 @@ function bodyMessage(body: unknown): string {
   if (!body) return "";
   if (typeof body === "string") return `: ${truncate(body)}`;
   if (isObject(body)) {
-    const msg = pickString(body, "detail") ?? pickString(body, "message") ?? pickString(body, "error");
+    const msg =
+      pickString(body, "detail") ?? pickString(body, "message") ?? pickString(body, "error");
     if (msg) return `: ${truncate(msg)}`;
   }
   return "";
@@ -451,6 +522,119 @@ export function isChutesHost(url: string): boolean {
   }
 }
 
+/** True only for credential-bearing Chutes URLs protected by TLS. */
+export function isSecureChutesUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      parsed.username === "" &&
+      parsed.password === "" &&
+      isChutesHost(parsed.toString())
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Asset URLs come from a remote model. Require TLS and reject explicit local,
+ * private, link-local, and otherwise non-routable destinations to limit SSRF.
+ */
+export function isSafeAssetUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" || parsed.username !== "" || parsed.password !== "") {
+      return false;
+    }
+    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    if (
+      hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
+      hostname.endsWith(".local")
+    ) {
+      return false;
+    }
+    const version = isIP(hostname);
+    if (version === 4) return isPublicIpv4(hostname);
+    if (version === 6) return isPublicIpv6(hostname);
+    return hostname.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function parseSafeAssetUrl(url: string): URL {
+  if (!isSafeAssetUrl(url)) {
+    throw new ChutesError("Refusing to download an asset from an unsafe URL.", {
+      hint: "Asset URLs must use HTTPS and resolve to a public destination.",
+    });
+  }
+  return new URL(url);
+}
+
+function isPublicIpv4(hostname: string): boolean {
+  const octets = hostname.split(".").map(Number);
+  const a = octets[0]!;
+  const b = octets[1]!;
+  if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && (b === 0 || b === 168)) return false;
+  if (a === 198 && (b === 18 || b === 19)) return false;
+  return true;
+}
+
+function isPublicIpv6(hostname: string): boolean {
+  const value = hostname.toLowerCase();
+  if (value === "::" || value === "::1") return false;
+  if (value.startsWith("fc") || value.startsWith("fd") || /^fe[89ab]/.test(value)) return false;
+  if (value.startsWith("ff")) return false;
+  if (value.startsWith("::ffff:")) {
+    const mapped = value.slice("::ffff:".length);
+    return isIP(mapped) === 4 && isPublicIpv4(mapped);
+  }
+  return true;
+}
+
+function isPublicIp(address: string): boolean {
+  const version = isIP(address);
+  if (version === 4) return isPublicIpv4(address);
+  if (version === 6) return isPublicIpv6(address);
+  return false;
+}
+
 function truncate(s: string, max = 300): string {
   return s.length > max ? `${s.slice(0, max)}…` : s;
+}
+
+async function readResponseBytes(res: Response, maxBytes: number): Promise<Uint8Array> {
+  const declaredLength = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw new ChutesError(`Response exceeds the configured ${maxBytes}-byte asset limit.`);
+  }
+  if (!res.body) return new Uint8Array();
+
+  const reader: ReadableStreamDefaultReader<Uint8Array> = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new ChutesError(`Response exceeds the configured ${maxBytes}-byte asset limit.`);
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
 }

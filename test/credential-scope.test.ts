@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
-import { isChutesHost } from "../src/core/chutes-client.js";
+import { isChutesHost, isSafeAssetUrl, isSecureChutesUrl } from "../src/core/chutes-client.js";
 import { isInsideWorkspace } from "../src/core/media-engine.js";
 
 // Both helpers gate data that leaves the machine: `isChutesHost` decides whether
@@ -28,6 +28,31 @@ describe("isChutesHost", () => {
   it("rejects unparseable input", () => {
     expect(isChutesHost("not a url")).toBe(false);
     expect(isChutesHost("")).toBe(false);
+  });
+});
+
+describe("isSecureChutesUrl", () => {
+  it("requires HTTPS without embedded credentials", () => {
+    expect(isSecureChutesUrl("https://model.chutes.ai/generate")).toBe(true);
+    expect(isSecureChutesUrl("http://model.chutes.ai/generate")).toBe(false);
+    expect(isSecureChutesUrl("https://user:pass@model.chutes.ai/generate")).toBe(false);
+    expect(isSecureChutesUrl("https://attacker.example/generate")).toBe(false);
+  });
+});
+
+describe("isSafeAssetUrl", () => {
+  it("accepts public HTTPS URLs", () => {
+    expect(isSafeAssetUrl("https://cdn.chutes.ai/asset.png")).toBe(true);
+    expect(isSafeAssetUrl("https://8.8.8.8/asset.png")).toBe(true);
+  });
+
+  it("rejects cleartext, credentials, localhost, and private IP ranges", () => {
+    expect(isSafeAssetUrl("http://cdn.chutes.ai/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://user:pass@example.com/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://localhost/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://127.0.0.1/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://10.0.0.1/asset.png")).toBe(false);
+    expect(isSafeAssetUrl("https://[::1]/asset.png")).toBe(false);
   });
 });
 

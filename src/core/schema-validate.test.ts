@@ -12,7 +12,10 @@ const schema = {
 
 describe("validateParams", () => {
   it("passes a valid payload", () => {
-    expect(validateParams({ prompt: "a cat", width: 512 }, schema)).toEqual({ valid: true, errors: [] });
+    expect(validateParams({ prompt: "a cat", width: 512 }, schema)).toEqual({
+      valid: true,
+      errors: [],
+    });
   });
 
   it("reports a missing required field", () => {

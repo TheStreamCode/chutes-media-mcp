@@ -36,10 +36,12 @@ Follow these steps for every generation request:
    wrapper) and validates the payload before spending a GPU call, returning a precise error if a
    field is wrong.
 
-4. **Generate** — Call `generate_media { model, kind, params, cord?, output_dir?, filename? }`. The
+4. **Generate** — Call
+   `generate_media { model, kind, params, cord?, output_dir?, filename?, overwrite? }`. The
    server warms the model, invokes it (blocking, with progress updates), retries transient cold-start
    `503`s automatically, downloads the asset, and saves it under `./assets/chutes/<kind>/` by
-   default. It returns `{ path, kind, model, cord, bytes, contentType, cost?, durationMs }`.
+   default. Outputs must remain inside the workspace; set `overwrite: true` only when replacement is
+   intentional. It returns `{ path, kind, model, cord, bytes, contentType, cost?, durationMs }`.
 
 5. **Reference** — Use the returned `path` in the project: embed the image in HTML/Markdown, wire the
    audio/video into the app, etc. Prefer a path relative to the project when referencing it in code.

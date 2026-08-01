@@ -44,10 +44,7 @@ Never hardcode payloads — describe first.`;
 // copy silently drifted (server announced 1.2.0 while npm shipped 1.2.1).
 const { version } = createRequire(import.meta.url)("../../package.json") as { version: string };
 
-const server = new McpServer(
-  { name: "chutes-media-mcp", version },
-  { instructions: INSTRUCTIONS },
-);
+const server = new McpServer({ name: "chutes-media-mcp", version }, { instructions: INSTRUCTIONS });
 
 server.registerTool(
   "list_media_models",
@@ -59,8 +56,13 @@ server.registerTool(
       "call describe_media_model before generate_media.",
     inputSchema: {
       kind: z.enum(["image", "video", "music", "speech"]).optional(),
-      query: z.string().optional().describe("Free-text filter on the model name."),
+      query: z.string().max(200).optional().describe("Free-text filter on the model name."),
       limit: z.number().int().positive().max(200).optional(),
+    },
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   async ({ kind, query, limit }) => {
@@ -83,7 +85,12 @@ server.registerTool(
       "(e.g. generate, and img2img/inpaint when present) with its required fields, types, " +
       "defaults and a minimal example payload.",
     inputSchema: {
-      model: z.string().describe("Model name/slug, e.g. owner/model-slug."),
+      model: z.string().min(1).max(512).describe("Model name/slug, e.g. owner/model-slug."),
+    },
+    annotations: {
+      readOnlyHint: true,
+      idempotentHint: true,
+      openWorldHint: true,
     },
   },
   async ({ model }) => {
@@ -106,16 +113,30 @@ server.registerTool(
       "output_dir (default ./assets/chutes/<kind>/) and the saved path is returned. Long video/" +
       "music jobs block with progress updates.",
     inputSchema: {
-      model: z.string(),
+      model: z.string().min(1).max(512),
       kind: z.enum(["image", "video", "music", "speech"]),
       params: z.record(z.unknown()).describe("Payload matching the cord's input schema."),
-      cord: z.string().optional().describe("Operation/cord (e.g. img2img); defaults to the primary one."),
-      output_dir: z.string().optional().describe("Output directory relative to CWD."),
-      filename: z.string().optional(),
-      timeout_ms: z.number().int().positive().optional(),
+      cord: z
+        .string()
+        .max(200)
+        .optional()
+        .describe("Operation/cord (e.g. img2img); defaults to the primary one."),
+      output_dir: z.string().max(1_024).optional().describe("Output directory relative to CWD."),
+      filename: z.string().min(1).max(255).optional(),
+      timeout_ms: z.number().int().positive().max(2_147_483_647).optional(),
+      overwrite: z
+        .boolean()
+        .optional()
+        .describe("Explicitly replace an existing asset and sidecar."),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
     },
   },
-  async ({ model, kind, params, cord, output_dir, filename, timeout_ms }, extra) => {
+  async ({ model, kind, params, cord, output_dir, filename, timeout_ms, overwrite }, extra) => {
     const progressToken = extra._meta?.progressToken;
     let lastProgress = 0;
     const onProgress = (e: ProgressEvent) => {
@@ -123,21 +144,26 @@ server.registerTool(
       let progress = e.progress ?? lastProgress + 0.01;
       if (progress <= lastProgress) progress = lastProgress + 0.001;
       lastProgress = Math.min(progress, 1);
-      void extra.sendNotification({
-        method: "notifications/progress",
-        params: { progressToken, progress: lastProgress, total: 1, message: e.message },
-      });
+      void extra
+        .sendNotification({
+          method: "notifications/progress",
+          params: { progressToken, progress: lastProgress, total: 1, message: e.message },
+        })
+        .catch(() => {
+          // A disconnected client must not turn progress reporting into an unhandled rejection.
+        });
     };
 
     try {
       const opts: GenerateOptions = {
         model,
         kind,
-        params: params as Record<string, unknown>,
+        params,
         cord,
         outputDir: output_dir,
         filename,
         timeoutMs: timeout_ms,
+        overwrite,
         signal: extra.signal,
         onProgress,
       };

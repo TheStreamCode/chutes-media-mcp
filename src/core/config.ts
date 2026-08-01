@@ -9,6 +9,7 @@ const DEFAULT_OUTPUT_DIR = "assets/chutes";
 const DEFAULT_PROGRESS_INTERVAL_MS = 5_000;
 const DEFAULT_COLD_START_RETRIES = 4;
 const DEFAULT_COLD_START_BACKOFF_MS = 8_000;
+const DEFAULT_MAX_ASSET_MB = 512;
 
 /** Generous, kind-specific blocking timeouts (Chutes media cords are synchronous). */
 const DEFAULT_TIMEOUTS: Record<MediaKind, number> = {
@@ -22,9 +23,31 @@ function parseAuthScheme(value: string | undefined): AuthScheme {
   if (value === undefined || value === "") return "raw";
   const v = value.toLowerCase();
   if (v === "raw" || v === "bearer") return v;
-  throw new ConfigError(
-    `Invalid CHUTES_AUTH_SCHEME "${value}". Use "raw" (default) or "bearer".`,
-  );
+  throw new ConfigError(`Invalid CHUTES_AUTH_SCHEME "${value}". Use "raw" (default) or "bearer".`);
+}
+
+function parseApiBaseUrl(value: string | undefined): string {
+  const raw = value?.trim() || DEFAULT_API_BASE_URL;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new ConfigError(`Invalid CHUTES_API_BASE_URL "${raw}". Expected an absolute HTTPS URL.`);
+  }
+  const loopback = new Set(["localhost", "127.0.0.1", "[::1]"]);
+  if (
+    (parsed.protocol !== "https:" &&
+      !(parsed.protocol === "http:" && loopback.has(parsed.hostname))) ||
+    parsed.username !== "" ||
+    parsed.password !== "" ||
+    parsed.search !== "" ||
+    parsed.hash !== ""
+  ) {
+    throw new ConfigError(
+      "CHUTES_API_BASE_URL must use HTTPS (HTTP is allowed only for loopback development) and contain no credentials, query, or fragment.",
+    );
+  }
+  return raw.replace(/\/+$/, "");
 }
 
 /**
@@ -64,10 +87,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ChutesConfig {
     DEFAULT_COLD_START_BACKOFF_MS,
     "CHUTES_COLD_START_BACKOFF_MS",
   );
+  const maxAssetMb = parsePositiveInt(
+    env.CHUTES_MAX_ASSET_MB,
+    DEFAULT_MAX_ASSET_MB,
+    "CHUTES_MAX_ASSET_MB",
+  );
+  if (maxAssetMb > 4_096) {
+    throw new ConfigError('Invalid CHUTES_MAX_ASSET_MB. The maximum supported value is "4096".');
+  }
 
   return {
     apiKey,
-    apiBaseUrl: (env.CHUTES_API_BASE_URL?.trim() || DEFAULT_API_BASE_URL).replace(/\/+$/, ""),
+    apiBaseUrl: parseApiBaseUrl(env.CHUTES_API_BASE_URL),
     authScheme: parseAuthScheme(env.CHUTES_AUTH_SCHEME),
     outputDir: env.CHUTES_OUTPUT_DIR?.trim() || DEFAULT_OUTPUT_DIR,
     timeouts: { ...DEFAULT_TIMEOUTS },
@@ -75,6 +106,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ChutesConfig {
     progressIntervalMs,
     coldStartRetries,
     coldStartBackoffMs,
+    maxAssetBytes: maxAssetMb * 1_024 * 1_024,
     strictParams: env.CHUTES_ALLOW_UNKNOWN_PARAMS?.toLowerCase() !== "true",
     writeProvenance: env.CHUTES_PROVENANCE?.toLowerCase() !== "false",
   };
@@ -83,7 +115,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ChutesConfig {
 function parsePositiveInt(value: string | undefined, fallback: number, name: string): number {
   if (value === undefined || value.trim() === "") return fallback;
   const n = Number(value);
-  if (!Number.isInteger(n) || n <= 0) {
+  if (!Number.isSafeInteger(n) || n <= 0) {
     throw new ConfigError(`Invalid ${name} "${value}". Expected a positive integer.`);
   }
   return n;
@@ -92,7 +124,7 @@ function parsePositiveInt(value: string | undefined, fallback: number, name: str
 function parseNonNegativeInt(value: string | undefined, fallback: number, name: string): number {
   if (value === undefined || value.trim() === "") return fallback;
   const n = Number(value);
-  if (!Number.isInteger(n) || n < 0) {
+  if (!Number.isSafeInteger(n) || n < 0) {
     throw new ConfigError(`Invalid ${name} "${value}". Expected a non-negative integer.`);
   }
   return n;

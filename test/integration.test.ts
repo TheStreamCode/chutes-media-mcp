@@ -40,7 +40,9 @@ describe.skipIf(!live)("live Chutes integration", () => {
       });
       expect(res.bytes).toBeGreaterThan(0);
       expect(res.path).toContain(dir);
-      process.stderr.write(`  saved ${res.path} (${res.bytes} bytes, ${res.durationMs}ms, cost=${res.cost ?? "n/a"})\n`);
+      process.stderr.write(
+        `  saved ${res.path} (${res.bytes} bytes, ${res.durationMs}ms, cost=${res.cost ?? "n/a"})\n`,
+      );
     },
     180_000,
   );

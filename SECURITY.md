@@ -1,5 +1,15 @@
 # Security Policy
 
+## Supported versions
+
+Security fixes are applied to the latest published release. Please upgrade to the current npm
+`latest` version before reporting an issue.
+
+| Version | Supported |
+| ------- | --------- |
+| 2.x     | Yes       |
+| 1.x     | No        |
+
 ## How the API key is handled
 
 `chutes-media-mcp` treats your Chutes API key as an opaque secret, held only in memory:
@@ -7,11 +17,25 @@
 - It is read **only** from the `CHUTES_API_KEY` environment variable; it is never written to disk by
   this tool.
 - It is sent only in the `Authorization` header to the Chutes API and to a model's own
-  `*.chutes.ai` subdomain. When a result references an external (non-`chutes.ai`) asset URL, the key
-  is **not** attached to that download.
+  HTTPS `*.chutes.ai` subdomain. Invocation URLs supplied by the catalog are rejected if they point
+  anywhere else. When a result references an external (non-`chutes.ai`) asset URL, the key is **not**
+  attached to that download.
 - It is never logged. The MCP server writes logs to stderr only; stdout carries the JSON-RPC channel.
-- `.gitignore` blocks `.env`, `*.key`, and `*.pem`, and the published npm package contains only
-  `dist/` (no sources, tests, or env files).
+- `.gitignore` blocks `.env`, `*.key`, and `*.pem`, and the published npm package excludes source,
+  test, environment, and repository-maintenance files.
+
+## File and network boundaries
+
+- Input files are read only from the current workspace. Both lexical traversal and real-path
+  escapes through symlinks or junctions are rejected before upload.
+- Outputs are written only inside the current workspace. A `filename` must be a single portable file
+  name, and replacing an existing asset requires an explicit `overwrite` option.
+- Asset downloads require HTTPS. Explicit private/local addresses, DNS resolutions to non-public
+  addresses, credential-bearing URLs, and unsafe redirect destinations are rejected.
+- Remote responses and local input assets are subject to a configurable size limit before being
+  retained in memory.
+- These controls reduce accidental and model-driven data exposure; they do not make an untrusted
+  third-party model safe. Review the model and provider before sending sensitive media or prompts.
 
 ### Your responsibilities
 

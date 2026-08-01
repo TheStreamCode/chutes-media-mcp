@@ -45,12 +45,14 @@ const EDIT_CORD_NAMES = ["img2img", "inpaint", "image2image", "outpaint", "edit"
 
 /** Build the structured describe output the agent uses to compose a payload. */
 export function describeView(detail: ChuteDetail): DescribeView {
-  const cords = detail.cords.map((c) => cordView(c.inputSchema, {
-    name: c.name,
-    method: c.method,
-    stream: c.stream,
-    outputContentType: c.outputContentType ?? undefined,
-  }));
+  const cords = detail.cords.map((c) =>
+    cordView(c.inputSchema, {
+      name: c.name,
+      method: c.method,
+      stream: c.stream,
+      outputContentType: c.outputContentType ?? undefined,
+    }),
+  );
   return {
     model: detail.name,
     kind: detail.kind,
@@ -67,7 +69,7 @@ function cordView(
 ): CordView {
   const root = isObject(schema) ? schema : {};
   const top = resolveRef(root, root);
-  const props = isObject(top.properties) ? (top.properties as Record<string, unknown>) : {};
+  const props = isObject(top.properties) ? top.properties : {};
   const required = Array.isArray(top.required) ? (top.required as string[]) : [];
   const fields: Record<string, FieldView> = {};
   for (const [key, rawValue] of Object.entries(props)) {
@@ -90,9 +92,14 @@ function cordView(
  * internal $ref/definitions so nested Pydantic-style models (e.g. `input_args`)
  * are expanded into something the agent can actually fill in.
  */
-function buildExample(node: unknown, root: Record<string, unknown>, keyHint: string, depth: number): unknown {
+function buildExample(
+  node: unknown,
+  root: Record<string, unknown>,
+  keyHint: string,
+  depth: number,
+): unknown {
   const s = resolveRef(node, root);
-  const props = isObject(s.properties) ? (s.properties as Record<string, unknown>) : undefined;
+  const props = isObject(s.properties) ? s.properties : undefined;
   if (props && depth < 6) {
     const required = Array.isArray(s.required) ? (s.required as string[]) : [];
     const keys = new Set<string>(required);
@@ -149,16 +156,21 @@ function schemaType(field: Record<string, unknown>): string | undefined {
 }
 
 /** Resolve an internal `#/definitions/...` or `#/$defs/...` $ref against the root schema. */
-function resolveRef(node: unknown, root: Record<string, unknown>): Record<string, unknown> {
+function resolveRef(
+  node: unknown,
+  root: Record<string, unknown>,
+  seen: ReadonlySet<string> = new Set(),
+): Record<string, unknown> {
   if (!isObject(node)) return {};
   const ref = node.$ref;
   if (typeof ref === "string" && ref.startsWith("#/")) {
+    if (seen.has(ref)) return node;
     let cur: unknown = root;
     for (const seg of ref.slice(2).split("/")) {
       if (!isObject(cur)) return node;
       cur = cur[seg];
     }
-    if (isObject(cur)) return resolveRef(cur, root);
+    if (isObject(cur)) return resolveRef(cur, root, new Set([...seen, ref]));
   }
   return node;
 }

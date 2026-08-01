@@ -3,6 +3,6 @@ contact_links:
   - name: Chutes Documentation
     url: https://docs.chutes.ai
     about: Official Chutes platform documentation
-  - name: Super CLI — launch any AI agent from VS Code
-    url: https://github.com/TheStreamCode/super-cli
-    about: One launcher for every coding agent
+  - name: Questions and support
+    url: https://github.com/TheStreamCode/chutes-media-mcp/discussions
+    about: Ask usage questions and share workflows in GitHub Discussions

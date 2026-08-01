@@ -17,7 +17,7 @@ Usage:
   chutes-media list [--kind <image|video|music|speech>] [--query <text>] [--limit <n>]
   chutes-media describe <model>
   chutes-media generate --kind <k> --model <m> --params <json|@file> [--cord <c>]
-                        [--output <dir>] [--filename <name>] [--timeout <ms>]
+                        [--output <dir>] [--filename <name>] [--timeout <ms>] [--overwrite]
   chutes-media install-skill [--project]
 
 Notes:
@@ -60,7 +60,7 @@ function loadParams(value: string): Record<string, unknown> {
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error(`--params is not valid JSON (and not a readable .json file): ${value}`);
+    throw new Error("--params is not valid JSON (and not a readable .json file).");
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new Error("--params must be a JSON object.");
@@ -71,6 +71,16 @@ function loadParams(value: string): Record<string, unknown> {
 function asKind(value: string | undefined): MediaKind {
   if (value && (MEDIA_KINDS as readonly string[]).includes(value)) return value as MediaKind;
   throw new Error(`--kind must be one of: ${MEDIA_KINDS.join(", ")}`);
+}
+
+function positiveInteger(value: string, name: string, max = Number.MAX_SAFE_INTEGER): number {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0 || parsed > max) {
+    throw new Error(
+      `${name} must be a positive integer${Number.isFinite(max) ? ` up to ${max}` : ""}.`,
+    );
+  }
+  return parsed;
 }
 
 async function main() {
@@ -86,6 +96,7 @@ async function main() {
       output: { type: "string" },
       filename: { type: "string" },
       timeout: { type: "string" },
+      overwrite: { type: "boolean" },
       project: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
@@ -102,7 +113,7 @@ async function main() {
       const models = await buildEngine().list({
         kind: values.kind ? asKind(values.kind) : undefined,
         query: values.query,
-        limit: values.limit ? Number(values.limit) : undefined,
+        limit: values.limit ? positiveInteger(values.limit, "--limit", 200) : undefined,
       });
       printResult({ count: models.length, models: listView(models) });
       return;
@@ -126,7 +137,10 @@ async function main() {
         cord: values.cord,
         outputDir: values.output,
         filename: values.filename,
-        timeoutMs: values.timeout ? Number(values.timeout) : undefined,
+        timeoutMs: values.timeout
+          ? positiveInteger(values.timeout, "--timeout", 2_147_483_647)
+          : undefined,
+        overwrite: values.overwrite,
         onProgress: (e) => emitProgress(e.stage, e.message),
       });
       printResult(result);

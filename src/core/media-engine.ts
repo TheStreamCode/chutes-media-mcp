@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { ChutesClient, ChutesError } from "./chutes-client.js";
+import { ChutesError } from "./chutes-client.js";
+import type { ChutesClient } from "./chutes-client.js";
 import { validateParams } from "./schema-validate.js";
 import type {
   ChuteDetail,
@@ -25,6 +26,8 @@ export interface GenerateOptions {
   outputDir?: string;
   /** Output filename; defaults to "<model>-<timestamp>.<ext>". */
   filename?: string;
+  /** Explicitly allow replacing an existing asset and sidecar. Defaults to false. */
+  overwrite?: boolean;
   /** Override the per-kind blocking timeout (ms). */
   timeoutMs?: number;
   /** Base for resolving relative input/output paths. Defaults to process.cwd(). */
@@ -97,6 +100,15 @@ export class MediaEngine {
     const startedAt = monotonicNow();
     const cwd = opts.cwd ?? process.cwd();
     const emit = opts.onProgress ?? (() => {});
+    const workspaceRoot = path.resolve(cwd);
+    const requestedDir = path.resolve(
+      workspaceRoot,
+      opts.outputDir ?? path.join(this.config.outputDir, opts.kind),
+    );
+    if (!isInsideWorkspace(requestedDir, workspaceRoot)) {
+      throw new ChutesError("Output directory must stay inside the current workspace.");
+    }
+    const requestedFilename = opts.filename ? validateFilename(opts.filename) : undefined;
 
     emit({ stage: "describing", message: `Describing ${opts.model}` });
     const detail = await this.describe(opts.model);
@@ -110,7 +122,9 @@ export class MediaEngine {
 
     // 1. Validate before spending a GPU call.
     emit({ stage: "validating", message: `Validating params for cord "${cord.name}"` });
-    const validation = validateParams(opts.params, cord.inputSchema, { strict: this.config.strictParams });
+    const validation = validateParams(opts.params, cord.inputSchema, {
+      strict: this.config.strictParams,
+    });
     if (!validation.valid) {
       throw new ChutesError(
         `Invalid params for ${opts.model} (cord "${cord.name}"): ${validation.errors.join("; ")}`,
@@ -119,9 +133,34 @@ export class MediaEngine {
     }
 
     // 2. Resolve workspace file paths referenced in params (img2img/inpaint/etc.).
-    const resolvedParams = await resolveInputAssets(opts.params, cwd, (msg) =>
-      emit({ stage: "resolving-assets", message: msg }),
+    const resolvedParams = await resolveInputAssets(
+      opts.params,
+      cwd,
+      (msg) => emit({ stage: "resolving-assets", message: msg }),
+      this.config.maxAssetBytes,
     );
+
+    // Resolve the real paths before making a billable request. This catches
+    // output directories that escape the workspace through a symlink/junction.
+    const dir = await prepareOutputDirectory(workspaceRoot, requestedDir);
+    const realWorkspaceRoot = await realpath(workspaceRoot);
+    if (requestedFilename && !opts.overwrite) {
+      const requestedPath = path.join(dir, requestedFilename);
+      if (
+        existsSync(requestedPath) ||
+        (this.config.writeProvenance && existsSync(`${requestedPath}.json`))
+      ) {
+        throw new ChutesError(`Refusing to overwrite existing output "${requestedPath}".`, {
+          hint: "Choose a new filename or pass overwrite=true explicitly.",
+        });
+      }
+    } else if (requestedFilename) {
+      const requestedPath = path.join(dir, requestedFilename);
+      await assertSafeOverwriteTarget(requestedPath, realWorkspaceRoot);
+      if (this.config.writeProvenance) {
+        await assertSafeOverwriteTarget(`${requestedPath}.json`, realWorkspaceRoot);
+      }
+    }
 
     // 3. Warm up the (possibly cold) model.
     if (this.config.warmup) {
@@ -152,20 +191,30 @@ export class MediaEngine {
 
     // 6. Save into the workspace.
     const ext = extensionFor(asset.contentType, opts.kind);
-    const dir = path.resolve(cwd, opts.outputDir ?? path.join(this.config.outputDir, opts.kind));
-    const filename = opts.filename ?? `${sanitize(opts.model)}-${timestamp()}.${ext}`;
+    const filename = requestedFilename ?? `${sanitize(opts.model)}-${timestamp()}.${ext}`;
     const outPath = path.join(dir, filename);
-    await mkdir(dir, { recursive: true });
-    await writeFile(outPath, asset.bytes);
+    const provenancePath = this.config.writeProvenance ? `${outPath}.json` : undefined;
+    if (
+      !opts.overwrite &&
+      (existsSync(outPath) || (provenancePath && existsSync(provenancePath)))
+    ) {
+      throw new ChutesError(`Refusing to overwrite existing output "${outPath}".`, {
+        hint: "Choose a new filename or pass overwrite=true explicitly.",
+      });
+    }
+    const writeFlag = opts.overwrite ? "w" : "wx";
+    if (opts.overwrite) {
+      await assertSafeOverwriteTarget(outPath, realWorkspaceRoot);
+      if (provenancePath) await assertSafeOverwriteTarget(provenancePath, realWorkspaceRoot);
+    }
+    await writeFile(outPath, asset.bytes, { flag: writeFlag });
     emit({ stage: "saved", message: outPath, progress: 1 });
 
     // 7. Pin what produced this asset: hash the exact schema validated against,
     // and (optionally) write a provenance sidecar for reproducibility.
     const schemaHash = hashSchema(cord.inputSchema);
     const durationMs = monotonicNow() - startedAt;
-    let provenancePath: string | undefined;
-    if (this.config.writeProvenance) {
-      provenancePath = `${outPath}.json`;
+    if (provenancePath) {
       const provenance = {
         asset: filename,
         kind: opts.kind,
@@ -173,7 +222,7 @@ export class MediaEngine {
         cord: cord.name,
         invokeUrl: url,
         params: opts.params, // original input (paths, not the base64 we sent)
-        seed: (opts.params as Record<string, unknown>).seed,
+        seed: opts.params.seed,
         schemaHash,
         contentType: asset.contentType,
         bytes: asset.bytes.byteLength,
@@ -181,7 +230,7 @@ export class MediaEngine {
         durationMs,
         createdAt: new Date().toISOString(),
       };
-      await writeFile(provenancePath, JSON.stringify(provenance, null, 2));
+      await writeFile(provenancePath, JSON.stringify(provenance, null, 2), { flag: writeFlag });
     }
 
     return {
@@ -281,7 +330,10 @@ export class MediaEngine {
     if (!candidate) {
       throw new ChutesError(
         "Model returned JSON without a recognisable asset URL or base64 field.",
-        { body: parsed, hint: "Inspect describe_media_model output; this cord may use a different shape." },
+        {
+          body: parsed,
+          hint: "Inspect describe_media_model output; this cord may use a different shape.",
+        },
       );
     }
 
@@ -295,7 +347,11 @@ export class MediaEngine {
       return { ...downloaded, cost: result.cost ?? downloaded.cost };
     }
     // Otherwise treat it as raw base64.
-    return { bytes: base64ToBytes(candidate), contentType: KIND_DEFAULT_CONTENT_TYPE[kind], cost: result.cost };
+    return {
+      bytes: base64ToBytes(candidate),
+      contentType: KIND_DEFAULT_CONTENT_TYPE[kind],
+      cost: result.cost,
+    };
   }
 }
 
@@ -314,7 +370,9 @@ export function selectCord(detail: ChuteDetail, kind: MediaKind, requested?: str
     );
     if (!found) {
       const available = detail.cords.map((c) => c.name).join(", ");
-      throw new ChutesError(`Cord "${requested}" not found on "${detail.name}". Available: ${available}.`);
+      throw new ChutesError(
+        `Cord "${requested}" not found on "${detail.name}". Available: ${available}.`,
+      );
     }
     return found;
   }
@@ -341,12 +399,13 @@ export async function resolveInputAssets(
   params: Record<string, unknown>,
   cwd: string,
   note: (msg: string) => void,
+  maxBytes = 512 * 1_024 * 1_024,
 ): Promise<Record<string, unknown>> {
   const out: Record<string, unknown> = { ...params };
   for (const [key, value] of Object.entries(params)) {
     if (TEXT_FIELDS.has(key.toLowerCase())) continue;
     if (typeof value === "string") {
-      const encoded = await maybeEncodeFile(value, cwd);
+      const encoded = await maybeEncodeFile(value, cwd, maxBytes);
       if (encoded !== undefined) {
         out[key] = encoded;
         note(`Encoded ${key} from ${value}`);
@@ -354,9 +413,11 @@ export async function resolveInputAssets(
     } else if (Array.isArray(value)) {
       // Array fields like image_b64s: encode any element that is a workspace file.
       let changed = false;
+      const values: unknown[] = value;
       const mapped = await Promise.all(
-        value.map(async (v) => {
-          const encoded = typeof v === "string" ? await maybeEncodeFile(v, cwd) : undefined;
+        values.map(async (v) => {
+          const encoded =
+            typeof v === "string" ? await maybeEncodeFile(v, cwd, maxBytes) : undefined;
           if (encoded !== undefined) {
             changed = true;
             return encoded;
@@ -374,12 +435,33 @@ export async function resolveInputAssets(
 }
 
 /** Return base64 of a workspace file if `value` resolves to one, else undefined. */
-async function maybeEncodeFile(value: string, cwd: string): Promise<string | undefined> {
+async function maybeEncodeFile(
+  value: string,
+  cwd: string,
+  maxBytes: number,
+): Promise<string | undefined> {
   if (value.length > 1024 || value.includes("\n")) return undefined; // clearly not a path
-  const resolved = path.resolve(cwd, value);
-  if (!isInsideWorkspace(resolved, cwd)) return undefined;
-  if (!existsSync(resolved)) return undefined;
-  const bytes = await readFile(resolved);
+  const workspaceRoot = path.resolve(cwd);
+  const resolved = path.resolve(workspaceRoot, value);
+  if (!isInsideWorkspace(resolved, workspaceRoot) || !existsSync(resolved)) return undefined;
+
+  let realWorkspaceRoot: string;
+  let realFile: string;
+  try {
+    [realWorkspaceRoot, realFile] = await Promise.all([
+      realpath(workspaceRoot),
+      realpath(resolved),
+    ]);
+  } catch {
+    return undefined;
+  }
+  if (!isInsideWorkspace(realFile, realWorkspaceRoot)) return undefined;
+  const metadata = await stat(realFile);
+  if (!metadata.isFile()) return undefined;
+  if (metadata.size > maxBytes) {
+    throw new ChutesError(`Input asset exceeds the configured ${maxBytes}-byte asset limit.`);
+  }
+  const bytes = await readFile(realFile);
   return bytes.toString("base64");
 }
 
@@ -391,6 +473,46 @@ async function maybeEncodeFile(value: string, cwd: string): Promise<string | und
 export function isInsideWorkspace(resolved: string, root: string): boolean {
   const rel = path.relative(path.resolve(root), resolved);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+async function prepareOutputDirectory(
+  workspaceRoot: string,
+  requestedDir: string,
+): Promise<string> {
+  const realWorkspaceRoot = await realpath(workspaceRoot);
+  let existingAncestor = requestedDir;
+  while (!existsSync(existingAncestor)) {
+    const parent = path.dirname(existingAncestor);
+    if (parent === existingAncestor) {
+      throw new ChutesError("Could not resolve a safe output directory.");
+    }
+    existingAncestor = parent;
+  }
+  const realAncestor = await realpath(existingAncestor);
+  if (!isInsideWorkspace(realAncestor, realWorkspaceRoot)) {
+    throw new ChutesError("Output directory resolves outside the current workspace.");
+  }
+
+  await mkdir(requestedDir, { recursive: true });
+  const realDirectory = await realpath(requestedDir);
+  if (!isInsideWorkspace(realDirectory, realWorkspaceRoot)) {
+    throw new ChutesError("Output directory resolves outside the current workspace.");
+  }
+  return realDirectory;
+}
+
+async function assertSafeOverwriteTarget(target: string, workspaceRoot: string): Promise<void> {
+  if (!existsSync(target)) return;
+  const metadata = await lstat(target);
+  const resolved = await realpath(target);
+  if (
+    metadata.isSymbolicLink() ||
+    !metadata.isFile() ||
+    metadata.nlink > 1 ||
+    !isInsideWorkspace(resolved, workspaceRoot)
+  ) {
+    throw new ChutesError(`Refusing to overwrite unsafe output target "${target}".`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -462,7 +584,8 @@ const FALLBACK_EXT: Record<MediaKind, string> = {
 
 export function extensionFor(contentType: string, kind: MediaKind): string {
   const ct = contentType.split(";")[0]!.trim().toLowerCase();
-  if (EXT_BY_CONTENT_TYPE[ct]) return EXT_BY_CONTENT_TYPE[ct]!;
+  const knownExtension = EXT_BY_CONTENT_TYPE[ct];
+  if (knownExtension) return knownExtension;
   const sub = ct.split("/")[1];
   if (sub && /^[a-z0-9]+$/.test(sub)) return sub;
   return FALLBACK_EXT[kind];
@@ -479,11 +602,13 @@ const KIND_CONTENT_FAMILY: Record<MediaKind, string> = {
 export function assertContentTypeMatchesKind(contentType: string, kind: MediaKind): void {
   const ct = contentType.split(";")[0]!.trim().toLowerCase();
   if (ct === "" || ct.endsWith("/octet-stream")) return; // opaque — can't tell
-  const family = ["image/", "video/", "audio/"].find((f) => ct.startsWith(f));
-  if (family && family !== KIND_CONTENT_FAMILY[kind]) {
-    throw new ChutesError(`Model returned ${ct}, which doesn't match the requested kind "${kind}".`, {
-      hint: "The cord may produce a different media type than expected — re-check describe_media_model.",
-    });
+  if (!ct.startsWith(KIND_CONTENT_FAMILY[kind])) {
+    throw new ChutesError(
+      `Model returned ${ct}, which doesn't match the requested kind "${kind}".`,
+      {
+        hint: "The cord may produce a different media type than expected — re-check describe_media_model.",
+      },
+    );
   }
 }
 
@@ -504,11 +629,49 @@ function stableStringify(value: unknown): string {
 }
 
 function base64ToBytes(b64: string): Uint8Array {
-  return new Uint8Array(Buffer.from(b64.trim(), "base64"));
+  const normalized = b64.replace(/\s+/g, "");
+  if (
+    normalized.length === 0 ||
+    normalized.length % 4 === 1 ||
+    !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)
+  ) {
+    throw new ChutesError("Model returned malformed base64 asset data.");
+  }
+  const bytes = Buffer.from(normalized, "base64");
+  const canonical = bytes.toString("base64").replace(/=+$/, "");
+  if (canonical !== normalized.replace(/=+$/, "")) {
+    throw new ChutesError("Model returned malformed base64 asset data.");
+  }
+  return new Uint8Array(bytes);
 }
 
 function sanitize(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "asset";
+}
+
+function validateFilename(filename: string): string {
+  if (
+    filename.length === 0 ||
+    filename === "." ||
+    filename === ".." ||
+    filename !== path.basename(filename) ||
+    /[<>:"/\\|?*]/.test(filename) ||
+    hasControlCharacter(filename) ||
+    /[. ]$/.test(filename) ||
+    Buffer.byteLength(filename, "utf8") > 255
+  ) {
+    throw new ChutesError("filename must be a valid single file name without path separators.");
+  }
+  const dot = filename.indexOf(".");
+  const stem = filename.slice(0, dot === -1 ? filename.length : dot).toUpperCase();
+  if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/.test(stem)) {
+    throw new ChutesError(`filename "${filename}" is reserved on Windows.`);
+  }
+  return filename;
+}
+
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => character.charCodeAt(0) < 32);
 }
 
 function timestamp(): string {

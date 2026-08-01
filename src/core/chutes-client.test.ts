@@ -40,7 +40,9 @@ function authOf(init?: RequestInit): string | undefined {
 
 describe("ChutesClient.list", () => {
   it("sets discovery params and parses an array response", async () => {
-    const ff = fakeFetch(() => json([{ name: "a", slug: "a", username: "u", tagline: "FLUX image" }]));
+    const ff = fakeFetch(() =>
+      json([{ name: "a", slug: "a", username: "u", tagline: "FLUX image" }]),
+    );
     const client = new ChutesClient(makeConfig(), ff);
     const out = await client.list({ query: "flux", limit: 10 });
 
@@ -57,7 +59,11 @@ describe("ChutesClient.list", () => {
     const ff = fakeFetch(() =>
       json({
         items: [
-          { name: "img", tagline: "diffusion", cords: [{ public_api_path: "/generate", output_content_type: "image/png" }] },
+          {
+            name: "img",
+            tagline: "diffusion",
+            cords: [{ public_api_path: "/generate", output_content_type: "image/png" }],
+          },
           { name: "tts", tagline: "text-to-speech voice", cords: [{ public_api_path: "/speak" }] },
         ],
       }),
@@ -81,7 +87,11 @@ describe("ChutesClient.describe", () => {
             public_api_path: "/generate",
             public_api_method: "POST",
             output_content_type: "image/jpeg",
-            input_schema: { type: "object", required: ["prompt"], properties: { prompt: { type: "string" } } },
+            input_schema: {
+              type: "object",
+              required: ["prompt"],
+              properties: { prompt: { type: "string" } },
+            },
           },
           { public_api_path: "/img2img", stream: false },
         ],
@@ -96,6 +106,12 @@ describe("ChutesClient.describe", () => {
     expect(detail.cords.map((c) => c.name)).toEqual(["generate", "img2img"]);
     expect(detail.cords[0]!.inputSchema).toMatchObject({ required: ["prompt"] });
     expect(detail.kind).toBe("image");
+  });
+
+  it("normalizes a bare subdomain field", async () => {
+    const ff = fakeFetch(() => json({ name: "m", subdomain: "owner-model", cords: [] }));
+    const detail = await new ChutesClient(makeConfig(), ff).describe("m");
+    expect(detail.invokeBaseUrl).toBe("https://owner-model.chutes.ai");
   });
 });
 
@@ -118,10 +134,68 @@ describe("ChutesClient auth + invoke", () => {
       () => new Response(payload, { status: 200, headers: { "content-type": "image/jpeg" } }),
     );
     const client = new ChutesClient(makeConfig(), ff);
-    const res = await client.invoke({ url: "https://u-s.chutes.ai/generate", body: { prompt: "x" } });
+    const res = await client.invoke({
+      url: "https://u-s.chutes.ai/generate",
+      body: { prompt: "x" },
+    });
     expect(res.contentType).toBe("image/jpeg");
     expect(Array.from(res.bytes)).toEqual([1, 2, 3, 4]);
     expect(ff.calls[0]!.init?.method).toBe("POST");
+    expect(ff.calls[0]!.init?.redirect).toBe("error");
+  });
+
+  it("rejects responses larger than the configured in-memory limit", async () => {
+    const ff = fakeFetch(
+      () =>
+        new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "content-type": "image/png", "content-length": "3" },
+        }),
+    );
+    const client = new ChutesClient(makeConfig({ maxAssetBytes: 2 }), ff);
+    await expect(
+      client.invoke({ url: "https://u-s.chutes.ai/generate", body: {} }),
+    ).rejects.toThrow(/asset limit/);
+  });
+
+  it("never sends the API key to an untrusted invocation URL", async () => {
+    const ff = fakeFetch(() => json({}));
+    const client = new ChutesClient(makeConfig(), ff);
+    await expect(
+      client.invoke({ url: "https://attacker.example/generate", body: { prompt: "x" } }),
+    ).rejects.toThrow(/untrusted invocation URL/);
+    expect(ff.calls).toHaveLength(0);
+  });
+});
+
+describe("ChutesClient.download", () => {
+  it("blocks explicit private-network asset URLs before fetch", async () => {
+    const ff = fakeFetch(
+      () => new Response(new Uint8Array([1]), { headers: { "content-type": "image/png" } }),
+    );
+    const client = new ChutesClient(makeConfig(), ff);
+    await expect(client.download("https://127.0.0.1/private.png")).rejects.toThrow(/unsafe URL/);
+    expect(ff.calls).toHaveLength(0);
+  });
+
+  it("blocks external hosts whose DNS resolves to a private address", async () => {
+    const ff = fakeFetch(
+      () => new Response(new Uint8Array([1]), { headers: { "content-type": "image/png" } }),
+    );
+    const client = new ChutesClient(makeConfig(), ff, () => Promise.resolve(["10.0.0.8"]));
+    await expect(client.download("https://assets.example/private.png")).rejects.toThrow(
+      /non-public network/,
+    );
+    expect(ff.calls).toHaveLength(0);
+  });
+
+  it("validates every redirect destination", async () => {
+    const ff = fakeFetch(
+      () => new Response(null, { status: 302, headers: { location: "https://[::1]/secret" } }),
+    );
+    const client = new ChutesClient(makeConfig(), ff);
+    await expect(client.download("https://cdn.chutes.ai/start")).rejects.toThrow(/unsafe URL/);
+    expect(ff.calls).toHaveLength(1);
   });
 });
 
@@ -172,7 +246,17 @@ describe("inferKind", () => {
     expect(inferKind({ tagline: "DiffRhythm music", cords: [] })).toBe("music");
     expect(inferKind({ tagline: "CSM text-to-speech", cords: [] })).toBe("speech");
     expect(
-      inferKind({ cords: [{ name: "g", path: "/generate", method: "POST", stream: false, outputContentType: "video/mp4" }] }),
+      inferKind({
+        cords: [
+          {
+            name: "g",
+            path: "/generate",
+            method: "POST",
+            stream: false,
+            outputContentType: "video/mp4",
+          },
+        ],
+      }),
     ).toBe("video");
   });
 });

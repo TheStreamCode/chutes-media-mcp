@@ -6,9 +6,33 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-08-01
+
+This major release turns filesystem and network safeguards into enforced boundaries. Existing
+automations that replace a named output must now opt in with `overwrite` / `--overwrite`.
+
+### Security
+
+- Restrict credential-bearing invocation requests to HTTPS Chutes hosts and reject redirects.
+- Reject private/local asset downloads, unsafe redirects, and external hosts resolving to private
+  network addresses.
+- Enforce real-path workspace containment for input files and output directories; require explicit
+  permission before overwriting an existing asset.
+- Bound remote responses and local input assets to a configurable in-memory size limit.
+
+### Changed
+
+- Add ESLint, Prettier, coverage thresholds, CodeQL, a Node.js 24 CI job, pinned GitHub Actions, and
+  a consolidated `npm run check` quality gate.
+- Update the MCP SDK and development dependencies; override the vulnerable Hono adapter version.
+- Add MCP tool safety annotations and stricter CLI/MCP argument validation.
+- Exclude the repository-only logo from the npm tarball, reducing install size without affecting the
+  runtime or bundled skill.
+
 ## [1.2.2] — 2026-07-25
 
 ### Security
+
 - **Credential leak to lookalike domains.** `isChutesHost` matched the asset URL with a bare
   `hostname.endsWith("chutes.ai")`, so hosts such as `evilchutes.ai` satisfied it and the
   `Authorization` header — carrying `CHUTES_API_KEY` — was attached to the download. The asset URL
@@ -23,12 +47,14 @@ All notable changes to this project are documented here. The format is based on
 - Both fixes are covered by regression tests in `test/credential-scope.test.ts`.
 
 ### Fixed
+
 - The server announced version `1.2.0` in the MCP handshake while the package shipped as `1.2.1`.
   The version is now read from `package.json` instead of being duplicated as a literal.
 
 ## [1.2.1] — 2026-07-10
 
 ### Security
+
 - Added a root `overrides` entry pinning transitive `esbuild` to `0.28.1` to resolve the
   `GHSA-g7r4-m6w7-qqqr` advisory (arbitrary file read in the dev server on Windows, affecting
   `esbuild >=0.27.3 <0.28.1`). tsup 8.5.1 declares `esbuild ^0.27.0` so npm cannot auto-fix;
@@ -36,11 +62,13 @@ All notable changes to this project are documented here. The format is based on
   depends on a non-vulnerable esbuild range.
 
 ### Changed
+
 - Removed the internal `chutes-media-mcp-project-plan.md` planning document from the public repository; it was never part of the shipped package and only cluttered the source tree.
 
 ## [1.2.0] — 2026-06-21
 
 ### Added
+
 - Per-run schema pinning + a `<asset>.json` provenance sidecar (model, cord, params, schema hash,
   cost, duration) written next to each asset for reproducibility. Disable with `CHUTES_PROVENANCE=false`.
 - Strict params validation: fields not declared in the cord schema are rejected so a renamed/unknown
@@ -52,6 +80,7 @@ All notable changes to this project are documented here. The format is based on
 ## [1.1.0] — 2026-06-21
 
 ### Added
+
 - MCP server `instructions`: every client now receives the describe→generate workflow guidance on
   connect, so any coding agent knows how to use the tools without a separate skill.
 - `chutes-media install-skill [--project]` — copies the bundled agent skill into the skills directory
@@ -68,6 +97,7 @@ unchanged from 0.1.0.
 Initial release.
 
 ### Added
+
 - **MCP server** (`chutes-media-mcp`, stdio) exposing three tools: `list_media_models`,
   `describe_media_model`, `generate_media`.
 - **CLI** (`chutes-media`) mirroring the same operations, with JSON output on stdout.
@@ -86,12 +116,15 @@ Initial release.
   accept the flat model on the wire; the package unwraps automatically.
 
 ### Notes
+
 - Authentication uses a single `Authorization` header; the key is sent **raw** by default
   (`CHUTES_AUTH_SCHEME=bearer` to use the `Bearer` prefix).
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.2...v2.0.0
+[1.2.2]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.0.0...v1.1.0

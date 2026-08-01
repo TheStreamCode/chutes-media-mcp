@@ -9,5 +9,17 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "test/**/*.test.ts"],
     environment: "node",
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary", "lcov"],
+      include: ["src/core/**/*.ts"],
+      exclude: ["src/**/*.test.ts"],
+      thresholds: {
+        statements: 80,
+        branches: 70,
+        functions: 80,
+        lines: 80,
+      },
+    },
   },
 });

@@ -32,6 +32,8 @@ export interface ChutesConfig {
   coldStartRetries: number;
   /** Base backoff (ms) between cold-start retries (grows linearly per attempt). */
   coldStartBackoffMs: number;
+  /** Maximum response or input-asset size accepted in memory. */
+  maxAssetBytes: number;
   /** Reject params with fields not in the cord schema (renamed/unknown fields fail loudly). */
   strictParams: boolean;
   /** Write a provenance sidecar (<asset>.json) next to each generated asset. */

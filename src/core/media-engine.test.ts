@@ -1,4 +1,5 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -28,23 +29,31 @@ function tmpdir(): Promise<string> {
 }
 
 // A router fake-fetch keyed by URL substring.
-function router(routes: Array<[RegExp, (init?: RequestInit) => Response]>): FetchLike & { calls: string[] } {
+function router(
+  routes: Array<[RegExp, (init?: RequestInit) => Response]>,
+): FetchLike & { calls: string[] } {
   const calls: string[] = [];
-  const fn = (async (input: string | URL, init?: RequestInit) => {
+  const fn = ((input: string | URL, init?: RequestInit) => {
     const url = input.toString();
     calls.push(url);
-    for (const [re, make] of routes) if (re.test(url)) return make(init);
-    return new Response("no route", { status: 404 });
+    for (const [re, make] of routes) if (re.test(url)) return Promise.resolve(make(init));
+    return Promise.resolve(new Response("no route", { status: 404 }));
   }) as FetchLike & { calls: string[] };
   fn.calls = calls;
   return fn;
 }
 
 function bytesResponse(bytes: number[], contentType: string): Response {
-  return new Response(new Uint8Array(bytes), { status: 200, headers: { "content-type": contentType } });
+  return new Response(new Uint8Array(bytes), {
+    status: 200,
+    headers: { "content-type": contentType },
+  });
 }
 function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
 }
 
 const imageChute = {
@@ -57,7 +66,11 @@ const imageChute = {
       public_api_path: "/generate",
       public_api_method: "POST",
       output_content_type: "image/jpeg",
-      input_schema: { type: "object", required: ["prompt"], properties: { prompt: { type: "string" } } },
+      input_schema: {
+        type: "object",
+        required: ["prompt"],
+        properties: { prompt: { type: "string" } },
+      },
     },
     { public_api_path: "/img2img", public_api_method: "POST" },
   ],
@@ -117,6 +130,32 @@ describe("resolveInputAssets", () => {
     const out = await resolveInputAssets({ image_b64s: ["a.png"] }, dir, () => {});
     expect(out.image_b64s).toEqual([Buffer.from([1, 2, 3]).toString("base64")]);
   });
+
+  it("does not follow a symlink or junction outside the workspace", async () => {
+    const workspace = await tmpdir();
+    const outside = await tmpdir();
+    await writeFile(path.join(outside, "secret.txt"), "do not upload");
+    await symlink(
+      outside,
+      path.join(workspace, "outside"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
+
+    const out = await resolveInputAssets(
+      { image: path.join("outside", "secret.txt") },
+      workspace,
+      () => {},
+    );
+    expect(out.image).toBe(path.join("outside", "secret.txt"));
+  });
+
+  it("rejects local input assets larger than the configured limit", async () => {
+    const dir = await tmpdir();
+    await writeFile(path.join(dir, "large.png"), new Uint8Array([1, 2, 3]));
+    await expect(resolveInputAssets({ image: "large.png" }, dir, () => {}, 2)).rejects.toThrow(
+      /asset limit/,
+    );
+  });
 });
 
 describe("assertContentTypeMatchesKind", () => {
@@ -126,26 +165,152 @@ describe("assertContentTypeMatchesKind", () => {
     expect(() => assertContentTypeMatchesKind("application/octet-stream", "video")).not.toThrow();
   });
   it("throws on a clear mismatch", () => {
-    expect(() => assertContentTypeMatchesKind("audio/mpeg", "image")).toThrow(/match the requested kind/);
+    expect(() => assertContentTypeMatchesKind("audio/mpeg", "image")).toThrow(
+      /match the requested kind/,
+    );
+    expect(() => assertContentTypeMatchesKind("text/html", "image")).toThrow(
+      /match the requested kind/,
+    );
   });
 });
 
 describe("hashSchema", () => {
   it("is stable regardless of key order", () => {
-    const a = hashSchema({ type: "object", required: ["p"], properties: { p: { type: "string" } } });
-    const b = hashSchema({ properties: { p: { type: "string" } }, required: ["p"], type: "object" });
+    const a = hashSchema({
+      type: "object",
+      required: ["p"],
+      properties: { p: { type: "string" } },
+    });
+    const b = hashSchema({
+      properties: { p: { type: "string" } },
+      required: ["p"],
+      type: "object",
+    });
     expect(a).toBe(b);
     expect(a).toMatch(/^[a-f0-9]{64}$/);
   });
 });
 
 describe("MediaEngine.generate", () => {
+  it("rejects output traversal and filename paths before any network call", async () => {
+    const dir = await tmpdir();
+    const ff = router([]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+
+    await expect(
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: dir,
+        outputDir: "../outside",
+      }),
+    ).rejects.toThrow(/inside the current workspace/);
+    await expect(
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: dir,
+        filename: "../outside.png",
+      }),
+    ).rejects.toThrow(/single file name/);
+    expect(ff.calls).toHaveLength(0);
+  });
+
+  it("does not create output directories through a symlink or junction escape", async () => {
+    const workspace = await tmpdir();
+    const outside = await tmpdir();
+    await symlink(
+      outside,
+      path.join(workspace, "outside"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    const ff = router([[/api\.chutes\.ai\/chutes\//, () => json(imageChute)]]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+
+    await expect(
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: workspace,
+        outputDir: path.join("outside", "created-by-escape"),
+      }),
+    ).rejects.toThrow(/outside the current workspace/);
+    expect(existsSync(path.join(outside, "created-by-escape"))).toBe(false);
+    expect(ff.calls.some((url) => url.endsWith("/generate"))).toBe(false);
+  });
+
+  it("requires explicit overwrite permission for an existing filename", async () => {
+    const dir = await tmpdir();
+    const outputDir = path.join(dir, "assets", "chutes", "image");
+    await mkdir(outputDir, { recursive: true });
+    await writeFile(path.join(outputDir, "hero.jpg"), "original");
+    const ff = router([
+      [/\/chutes\/warmup\//, () => json({})],
+      [/api\.chutes\.ai\/chutes\//, () => json(imageChute)],
+      [/\.chutes\.ai\/generate/, () => bytesResponse([1, 2, 3], "image/jpeg")],
+    ]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+
+    await expect(
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: dir,
+        filename: "hero.jpg",
+      }),
+    ).rejects.toThrow(/Refusing to overwrite/);
+    expect(ff.calls.some((url) => url.endsWith("/generate"))).toBe(false);
+
+    const result = await engine.generate({
+      model: "myuser/my-image-gen",
+      kind: "image",
+      params: { prompt: "x" },
+      cwd: dir,
+      filename: "hero.jpg",
+      overwrite: true,
+    });
+    expect(Array.from(await readFile(result.path))).toEqual([1, 2, 3]);
+  });
+
+  it("never follows an overwrite target that is a symlink or junction", async () => {
+    const workspace = await tmpdir();
+    const outside = await tmpdir();
+    const outputDir = path.join(workspace, "assets", "chutes", "image");
+    await mkdir(outputDir, { recursive: true });
+    await symlink(
+      outside,
+      path.join(outputDir, "hero.jpg"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    const ff = router([[/api\.chutes\.ai\/chutes\//, () => json(imageChute)]]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+
+    await expect(
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: workspace,
+        filename: "hero.jpg",
+        overwrite: true,
+      }),
+    ).rejects.toThrow(/unsafe output target/);
+    expect(ff.calls.some((url) => url.endsWith("/generate"))).toBe(false);
+  });
+
   it("runs the full happy path and saves the asset", async () => {
     const dir = await tmpdir();
     const ff = router([
       [/\/chutes\/warmup\//, () => json({ status: "warm" })],
       [/api\.chutes\.ai\/chutes\//, () => json(imageChute)],
-      [/myuser-my-image-gen\.chutes\.ai\/generate/, () => bytesResponse([255, 216, 255, 217], "image/jpeg")],
+      [
+        /myuser-my-image-gen\.chutes\.ai\/generate/,
+        () => bytesResponse([255, 216, 255, 217], "image/jpeg"),
+      ],
     ]);
     const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
     const events: ProgressEvent[] = [];
@@ -185,10 +350,12 @@ describe("MediaEngine.generate", () => {
     });
     expect(res.schemaHash).toMatch(/^[a-f0-9]{64}$/);
     expect(res.provenancePath).toBe(`${res.path}.json`);
-    const sidecar = JSON.parse(await readFile(res.provenancePath!, "utf8"));
-    expect(sidecar.model).toBe("myuser/my-image-gen");
-    expect(sidecar.schemaHash).toBe(res.schemaHash);
-    expect(sidecar.params).toEqual({ prompt: "x" });
+    const sidecar: unknown = JSON.parse(await readFile(res.provenancePath!, "utf8"));
+    expect(sidecar).toMatchObject({
+      model: "myuser/my-image-gen",
+      schemaHash: res.schemaHash,
+      params: { prompt: "x" },
+    });
   });
 
   it("rejects a 200 whose media type doesn't match the kind", async () => {
@@ -200,7 +367,12 @@ describe("MediaEngine.generate", () => {
     ]);
     const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
     await expect(
-      engine.generate({ model: "myuser/my-image-gen", kind: "image", params: { prompt: "x" }, cwd: dir }),
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: dir,
+      }),
     ).rejects.toThrow(/match the requested kind/);
   });
 
@@ -223,7 +395,13 @@ describe("MediaEngine.generate", () => {
     let genCalls = 0;
     let warmups = 0;
     const ff = router([
-      [/\/chutes\/warmup\//, () => { warmups++; return json({}); }],
+      [
+        /\/chutes\/warmup\//,
+        () => {
+          warmups++;
+          return json({});
+        },
+      ],
       [/api\.chutes\.ai\/chutes\//, () => json(imageChute)],
       [
         /myuser-my-image-gen\.chutes\.ai\/generate/,
@@ -257,12 +435,23 @@ describe("MediaEngine.generate", () => {
     const ff = router([
       [/\/chutes\/warmup\//, () => json({})],
       [/api\.chutes\.ai\/chutes\//, () => json(imageChute)],
-      [/myuser-my-image-gen\.chutes\.ai\/generate/, () => { genCalls++; return json({ detail: "No instances available" }, 503); }],
+      [
+        /myuser-my-image-gen\.chutes\.ai\/generate/,
+        () => {
+          genCalls++;
+          return json({ detail: "No instances available" }, 503);
+        },
+      ],
     ]);
     const cfg = makeConfig({ coldStartRetries: 1 });
     const engine = new MediaEngine(new ChutesClient(cfg, ff), cfg);
     await expect(
-      engine.generate({ model: "myuser/my-image-gen", kind: "image", params: { prompt: "x" }, cwd: dir }),
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: dir,
+      }),
     ).rejects.toMatchObject({ status: 503 });
     expect(genCalls).toBe(2); // initial attempt + 1 retry
   });
@@ -284,5 +473,23 @@ describe("MediaEngine.generate", () => {
     });
     expect(res.contentType).toBe("image/png");
     expect(res.bytes).toBe(3);
+  });
+
+  it("rejects malformed base64 instead of writing corrupt output", async () => {
+    const dir = await tmpdir();
+    const ff = router([
+      [/\/chutes\/warmup\//, () => json({})],
+      [/api\.chutes\.ai\/chutes\//, () => json(imageChute)],
+      [/\.chutes\.ai\/generate/, () => json({ b64_json: "not-base64!" })],
+    ]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+    await expect(
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: dir,
+      }),
+    ).rejects.toThrow(/malformed base64/);
   });
 });

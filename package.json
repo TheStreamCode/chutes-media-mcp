@@ -1,6 +1,6 @@
 {
   "name": "chutes-media-mcp",
-  "version": "1.2.2",
+  "version": "2.0.0",
   "description": "MCP server + CLI to generate image, video, music and speech through Chutes, saving assets into your project.",
   "type": "module",
   "license": "MIT",
@@ -10,6 +10,10 @@
     "url": "git+https://github.com/TheStreamCode/chutes-media-mcp.git"
   },
   "homepage": "https://github.com/TheStreamCode/chutes-media-mcp#readme",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/TheStreamCode"
+  },
   "bugs": {
     "url": "https://github.com/TheStreamCode/chutes-media-mcp/issues"
   },
@@ -22,6 +26,7 @@
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -31,7 +36,6 @@
   "files": [
     "dist",
     "skill",
-    "assets/chutes-media-mcp.png",
     "LICENSE",
     "NOTICE",
     "README.md"
@@ -39,11 +43,16 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build",
     "prepare": "npm run build",
-    "prepublishOnly": "npm run typecheck"
+    "prepublishOnly": "npm run check"
   },
   "keywords": [
     "mcp",
@@ -56,17 +65,23 @@
     "ai"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "ajv": "^8.20.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.19.43",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.8.0",
+    "prettier": "^3.9.6",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.1.10"
   },
   "overrides": {
+    "@hono/node-server": "^2.0.12",
     "esbuild": "0.28.1"
   },
   "allowScripts": {

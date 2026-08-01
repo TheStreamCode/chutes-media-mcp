@@ -18,6 +18,7 @@ describe("loadConfig", () => {
     expect(cfg.timeouts.video).toBeGreaterThan(cfg.timeouts.image);
     expect(cfg.coldStartRetries).toBe(4);
     expect(cfg.coldStartBackoffMs).toBe(8000);
+    expect(cfg.maxAssetBytes).toBe(512 * 1024 * 1024);
   });
 
   it("allows disabling cold-start retries with 0", () => {
@@ -28,6 +29,18 @@ describe("loadConfig", () => {
   it("strips a trailing slash from the base URL", () => {
     const cfg = loadConfig({ ...baseEnv, CHUTES_API_BASE_URL: "https://example.com/api/" });
     expect(cfg.apiBaseUrl).toBe("https://example.com/api");
+  });
+
+  it("rejects unsafe API base URLs but allows loopback HTTP for development", () => {
+    expect(() => loadConfig({ ...baseEnv, CHUTES_API_BASE_URL: "http://api.example.com" })).toThrow(
+      ConfigError,
+    );
+    expect(() =>
+      loadConfig({ ...baseEnv, CHUTES_API_BASE_URL: "https://user:pass@example.com" }),
+    ).toThrow(ConfigError);
+    expect(
+      loadConfig({ ...baseEnv, CHUTES_API_BASE_URL: "http://127.0.0.1:8000/" }).apiBaseUrl,
+    ).toBe("http://127.0.0.1:8000");
   });
 
   it("honours CHUTES_AUTH_SCHEME and rejects invalid values", () => {
@@ -41,8 +54,20 @@ describe("loadConfig", () => {
   });
 
   it("validates CHUTES_PROGRESS_INTERVAL_MS", () => {
-    expect(loadConfig({ ...baseEnv, CHUTES_PROGRESS_INTERVAL_MS: "2000" }).progressIntervalMs).toBe(2000);
-    expect(() => loadConfig({ ...baseEnv, CHUTES_PROGRESS_INTERVAL_MS: "-5" })).toThrow(ConfigError);
+    expect(loadConfig({ ...baseEnv, CHUTES_PROGRESS_INTERVAL_MS: "2000" }).progressIntervalMs).toBe(
+      2000,
+    );
+    expect(() => loadConfig({ ...baseEnv, CHUTES_PROGRESS_INTERVAL_MS: "-5" })).toThrow(
+      ConfigError,
+    );
+  });
+
+  it("validates CHUTES_MAX_ASSET_MB", () => {
+    expect(loadConfig({ ...baseEnv, CHUTES_MAX_ASSET_MB: "64" }).maxAssetBytes).toBe(
+      64 * 1024 * 1024,
+    );
+    expect(() => loadConfig({ ...baseEnv, CHUTES_MAX_ASSET_MB: "0" })).toThrow(ConfigError);
+    expect(() => loadConfig({ ...baseEnv, CHUTES_MAX_ASSET_MB: "4097" })).toThrow(ConfigError);
   });
 });
 

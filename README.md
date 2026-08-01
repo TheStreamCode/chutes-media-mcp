@@ -3,9 +3,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node >= 20.3](https://img.shields.io/badge/node-%3E%3D20.3-brightgreen.svg)](https://nodejs.org)
 [![npm](https://img.shields.io/npm/v/chutes-media-mcp.svg)](https://www.npmjs.com/package/chutes-media-mcp)
+[![CI](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/codeql.yml)
 [![Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
 
-![chutes-media-mcp](./assets/chutes-media-mcp.png)
+![chutes-media-mcp](https://raw.githubusercontent.com/TheStreamCode/chutes-media-mcp/main/assets/chutes-media-mcp.png)
 
 Generate **image, video, music and speech** through [Chutes](https://chutes.ai) from inside any
 coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, OpenCode, Claude Desktop — and have the generated
@@ -57,7 +59,9 @@ downloading, saving, light validation, and best-effort cost reporting.
 ## Requirements
 
 - **Node.js ≥ 20.3** for the published MCP server and CLI
-- Contributors using the locked Vite/Vitest toolchain need **Node.js ^20.19.0 or ≥ 22.12.0**
+- Use a supported LTS release (**Node.js 22 or 24**) for production. Node.js 20 compatibility is
+  retained for the current major release, but Node.js 20 itself is end-of-life.
+- Contributors using the locked quality toolchain need **Node.js ^20.19.0, ≥ 22.13.0, or ≥ 24**
 - A **Chutes API key** (`CHUTES_API_KEY`). Create one in your Chutes account.
 
 ## Install
@@ -90,29 +94,46 @@ npx -y github:TheStreamCode/chutes-media-mcp
 
 ```bash
 git clone https://github.com/TheStreamCode/chutes-media-mcp
-cd chutes-media-mcp && npm install && npm run build
+cd chutes-media-mcp && npm ci && npm run build
 # then point your client at: node /abs/path/dist/mcp/server.js
 ```
 
 > The package ships two bins: `chutes-media-mcp` (the MCP server) and `chutes-media` (the CLI).
 
+### Upgrading from 1.x
+
+Version 2.0 makes the safety boundaries enforceable instead of best-effort:
+
+- Existing named assets are preserved unless `overwrite` / `--overwrite` is explicitly set.
+- Input and output paths must resolve inside the current workspace; symlink and junction escapes are
+  rejected.
+- Custom management API URLs require HTTPS, except loopback URLs used for local development.
+- Invocation credentials are sent only to HTTPS Chutes hosts, and asset downloads must resolve to
+  public HTTPS destinations.
+- Responses and local input assets are capped by `CHUTES_MAX_ASSET_MB` (512 MiB by default).
+
+If an existing automation intentionally replaces a file, add the explicit overwrite option after
+confirming the target path.
+
 ## Configuration
 
-| Variable | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `CHUTES_API_KEY` | ✅ | — | Your Chutes API key. Read from the environment; never written to disk. |
-| `CHUTES_AUTH_SCHEME` | | `raw` | How the key is sent in `Authorization`: `raw` (the key as-is) or `bearer` (prefixed `Bearer `). On a 401, try flipping this. |
-| `CHUTES_API_BASE_URL` | | `https://api.chutes.ai` | Management API base URL. |
-| `CHUTES_OUTPUT_DIR` | | `assets/chutes` | Output directory (relative to the agent's CWD). A `<kind>/` subfolder is appended. |
-| `CHUTES_WARMUP` | | `true` | Warm models up before invoking. Set `false` to skip. |
-| `CHUTES_COLD_START_RETRIES` | | `4` | Retries when a cold model returns `503 no-instances` (`0` disables). |
-| `CHUTES_COLD_START_BACKOFF_MS` | | `8000` | Base backoff between cold-start retries (grows per attempt). |
-| `CHUTES_PROGRESS_INTERVAL_MS` | | `5000` | How often progress heartbeats are emitted while a call blocks. |
-| `CHUTES_ALLOW_UNKNOWN_PARAMS` | | `false` | When `true`, allow params not in the model schema. Default rejects them so a renamed/unknown field fails loudly. |
-| `CHUTES_PROVENANCE` | | `true` | Write a `<asset>.json` provenance sidecar (model, cord, params, schema hash). Set `false` to disable. |
+| Variable                       | Required | Default                 | Purpose                                                                                                                      |
+| ------------------------------ | -------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `CHUTES_API_KEY`               | ✅       | —                       | Your Chutes API key. Read from the environment; never written to disk.                                                       |
+| `CHUTES_AUTH_SCHEME`           |          | `raw`                   | How the key is sent in `Authorization`: `raw` (the key as-is) or `bearer` (prefixed `Bearer `). On a 401, try flipping this. |
+| `CHUTES_API_BASE_URL`          |          | `https://api.chutes.ai` | Management API base URL. HTTPS is required except for loopback development.                                                  |
+| `CHUTES_OUTPUT_DIR`            |          | `assets/chutes`         | Output directory inside the agent's CWD. A `<kind>/` subfolder is appended.                                                  |
+| `CHUTES_WARMUP`                |          | `true`                  | Warm models up before invoking. Set `false` to skip.                                                                         |
+| `CHUTES_COLD_START_RETRIES`    |          | `4`                     | Retries when a cold model returns `503 no-instances` (`0` disables).                                                         |
+| `CHUTES_COLD_START_BACKOFF_MS` |          | `8000`                  | Base backoff between cold-start retries (grows per attempt).                                                                 |
+| `CHUTES_MAX_ASSET_MB`          |          | `512`                   | Maximum response or local input-asset size accepted in memory (max `4096`).                                                  |
+| `CHUTES_PROGRESS_INTERVAL_MS`  |          | `5000`                  | How often progress heartbeats are emitted while a call blocks.                                                               |
+| `CHUTES_ALLOW_UNKNOWN_PARAMS`  |          | `false`                 | When `true`, allow params not in the model schema. Default rejects them so a renamed/unknown field fails loudly.             |
+| `CHUTES_PROVENANCE`            |          | `true`                  | Write a `<asset>.json` provenance sidecar (model, cord, params, schema hash). Set `false` to disable.                        |
 
 Generated assets are saved to `./assets/chutes/<kind>/` by default, relative to wherever the agent is
-running — so they land inside the project being worked on.
+running — so they land inside the project being worked on. Output traversal and symlink escapes are
+rejected. Existing files are not replaced unless `overwrite` is explicitly enabled.
 
 ---
 
@@ -145,7 +166,7 @@ claude mcp add chutes-media --env CHUTES_API_KEY=cpk_your_key -- npx -y chutes-m
 - **`list_media_models`** — `{ kind?, query?, limit? }` → matching models.
 - **`describe_media_model`** — `{ model }` → every cord with required fields, types, defaults, a
   minimal example payload, and a top-level `supportsEditing`. Call this before generating.
-- **`generate_media`** — `{ model, kind, params, cord?, output_dir?, filename?, timeout_ms? }` →
+- **`generate_media`** — `{ model, kind, params, cord?, output_dir?, filename?, timeout_ms?, overwrite? }` →
   runs the generation and returns
   `{ path, kind, model, cord, bytes, contentType, cost?, durationMs }`. `params` is what you composed
   from the described schema.
@@ -175,6 +196,10 @@ chutes-media describe owner/model-slug
 
 # Generate (inline JSON, @file, or a path to a .json file for --params)
 chutes-media generate --kind image --model owner/model-slug \
+  --params '{"prompt":"a red bicycle on a cobblestone street"}'
+
+# Replacing an existing named asset must be explicit
+chutes-media generate --kind image --model owner/model-slug --filename hero.jpg --overwrite \
   --params '{"prompt":"a red bicycle on a cobblestone street"}'
 ```
 
@@ -234,16 +259,15 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, the build/test commands, and
 caveat. Quick version:
 
 ```bash
-npm install
-npm run typecheck
-npm run test
-npm run build
+npm ci
+npm run check
 ```
 
 ## Security
 
-Never commit your API key. See [SECURITY.md](./SECURITY.md) for how the key is handled and how to
-report vulnerabilities.
+Never commit your API key. Credential-bearing requests are limited to HTTPS Chutes hosts, remote
+asset URLs are screened against private-network destinations, and file access is contained to the
+workspace. See [SECURITY.md](./SECURITY.md) for details and vulnerability reporting.
 
 ## Author
 
@@ -265,7 +289,7 @@ Chutes Global Corp. The Chutes name, logo, platform, services, branding, and
 related marks are the property of Chutes Global Corp or their respective
 owners. The MIT License and this project grant no rights to use them.
 
-[`assets/chutes-media-mcp.png`](./assets/chutes-media-mcp.png) is the only
+[`assets/chutes-media-mcp.png`](https://github.com/TheStreamCode/chutes-media-mcp/blob/main/assets/chutes-media-mcp.png) is the only
 project image in this repository that incorporates Chutes logo/marks. It is one
 of exactly three user-created Chutes-logo image compositions across the Chutes
 projects; the embedded Chutes logo/marks remain the property of their owner and

@@ -27,14 +27,13 @@ always fetch and validate against the live schema.
 
 ## Development setup
 
-The published MCP server and CLI support **Node.js ≥ 20.3**. The locked Vite/Vitest development
-toolchain requires **Node.js ^20.19.0 or ≥ 22.12.0**.
+The published MCP server and CLI support **Node.js ≥ 20.3**. Use Node.js 22 or 24 LTS for production;
+Node.js 20 is retained only as compatibility for the current major release. The locked development
+toolchain requires **Node.js ^20.19.0, ≥ 22.13.0, or ≥ 24**.
 
 ```bash
-npm install
-npm run typecheck    # tsc --noEmit (strict)
-npm run test         # vitest (HTTP mocked)
-npm run build        # tsup → dist/
+npm ci
+npm run check        # format + lint + typecheck + coverage + build
 ```
 
 ### Windows `#`-in-path caveat
@@ -69,12 +68,13 @@ Push-Location "$HOME\chutes-mcp-dev"; npx vitest run; Pop-Location
 - TypeScript strict, ESM, `node:` imports, explicit `.js` extensions in relative imports.
 - Prefer native APIs (global `fetch`, `node:util` `parseArgs`) over new dependencies.
 - Keep frontends thin; put logic in the core.
-- Match the existing style; run `npm run typecheck` before opening a PR.
+- Match the existing style; use `npm run format` when needed and run `npm run check` before opening
+  a PR.
 
 ## Submitting changes
 
 1. Fork and create a feature branch.
-2. Make the change with accompanying tests; ensure `typecheck`, `test`, and `build` pass.
+2. Make the change with accompanying tests; ensure `npm run check` passes.
 3. Open a pull request describing the change and how you verified it.
 
 ## Reporting bugs

@@ -5,7 +5,7 @@
 export * from "./core/types.js";
 export { loadConfig, authHeaderValue, ConfigError } from "./core/config.js";
 export { ChutesClient, ChutesError, inferKind } from "./core/chutes-client.js";
-export type { FetchLike } from "./core/chutes-client.js";
+export type { FetchLike, ResolveHost } from "./core/chutes-client.js";
 export {
   MediaEngine,
   selectCord,

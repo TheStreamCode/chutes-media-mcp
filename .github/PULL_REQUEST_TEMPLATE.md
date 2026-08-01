@@ -4,9 +4,7 @@ What does this PR change and why?
 
 ## How verified
 
-- [ ] `npm run typecheck` passes
-- [ ] `npm run test` passes
-- [ ] `npm run build` passes
+- [ ] `npm run check` passes
 - [ ] Added/updated tests for the change
 - [ ] (If applicable) verified live against a real model
 
