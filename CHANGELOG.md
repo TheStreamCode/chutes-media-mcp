@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.0.2] — 2026-08-01
+
+Documentation and repository hygiene only. No runtime, API or dependency changes.
+
+### Fixed
+
+- Document the full `generate_media` result in the README and the bundled agent skill. Both still
+  listed the pre-1.2.0 shape and omitted `schemaHash` and `provenancePath`, which the tool has
+  returned since 1.2.0.
+
+### Changed
+
+- Add `AGENTS.md`: a project-specific contributor/AI-agent guide covering the architecture, the real
+  npm scripts, the security-critical code paths, the deliberately pinned dependencies (the coupled
+  `overrides.esbuild` / `allowScripts` pair, `@types/node`, `zod`, `typescript`), the versioning and
+  release procedure, and the protected-branch workflow.
+- Ignore `*.tgz` and `.npmrc` in git, so a local `npm pack` tarball or a token-bearing registry
+  config can no longer be committed by accident.
+
 ## [2.0.1] — 2026-08-01
 
 ### Security
@@ -129,7 +148,8 @@ Initial release.
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.2...v2.0.0
 [1.2.2]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.1...v1.2.2
