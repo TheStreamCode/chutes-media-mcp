@@ -364,9 +364,9 @@ export function selectCord(detail: ChuteDetail, kind: MediaKind, requested?: str
     throw new ChutesError(`Model "${detail.name}" exposes no callable cords.`);
   }
   if (requested) {
-    const norm = requested.replace(/^\/+/, "").toLowerCase();
+    const norm = stripLeadingSlashes(requested).toLowerCase();
     const found = detail.cords.find(
-      (c) => c.name.toLowerCase() === norm || c.path.replace(/^\/+/, "").toLowerCase() === norm,
+      (c) => c.name.toLowerCase() === norm || stripLeadingSlashes(c.path).toLowerCase() === norm,
     );
     if (!found) {
       const available = detail.cords.map((c) => c.name).join(", ");
@@ -646,7 +646,18 @@ function base64ToBytes(b64: string): Uint8Array {
 }
 
 function sanitize(name: string): string {
-  return name.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "asset";
+  const replaced = name.replace(/[^a-zA-Z0-9._-]+/g, "-");
+  let start = 0;
+  let end = replaced.length;
+  while (start < end && replaced.charCodeAt(start) === 45) start++;
+  while (end > start && replaced.charCodeAt(end - 1) === 45) end--;
+  return replaced.slice(start, end) || "asset";
+}
+
+function stripLeadingSlashes(value: string): string {
+  let start = 0;
+  while (start < value.length && value.charCodeAt(start) === 47) start++;
+  return value.slice(start);
 }
 
 function validateFilename(filename: string): string {

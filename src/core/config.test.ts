@@ -27,7 +27,10 @@ describe("loadConfig", () => {
   });
 
   it("strips a trailing slash from the base URL", () => {
-    const cfg = loadConfig({ ...baseEnv, CHUTES_API_BASE_URL: "https://example.com/api/" });
+    const cfg = loadConfig({
+      ...baseEnv,
+      CHUTES_API_BASE_URL: `https://example.com/api${"/".repeat(128)}`,
+    });
     expect(cfg.apiBaseUrl).toBe("https://example.com/api");
   });
 

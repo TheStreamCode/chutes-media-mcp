@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.0.1] — 2026-08-01
+
+### Security
+
+- Replace two polynomial regular-expression operations on configuration and model identifiers with
+  bounded linear scans, resolving the CodeQL findings raised after the 2.0.0 release.
+
 ## [2.0.0] — 2026-08-01
 
 This major release turns filesystem and network safeguards into enforced boundaries. Existing
@@ -122,7 +129,8 @@ Initial release.
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.2...v2.0.0
 [1.2.2]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.0...v1.2.1

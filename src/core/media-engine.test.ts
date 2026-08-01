@@ -89,6 +89,7 @@ describe("selectCord", () => {
   it("returns the requested cord by name or path", () => {
     expect(selectCord(detail, "image", "img2img").name).toBe("img2img");
     expect(selectCord(detail, "image", "/generate").name).toBe("generate");
+    expect(selectCord(detail, "image", `${"/".repeat(128)}generate`).name).toBe("generate");
   });
 
   it("throws with the available list for an unknown cord", () => {

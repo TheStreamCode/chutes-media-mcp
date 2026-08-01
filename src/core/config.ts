@@ -47,7 +47,9 @@ function parseApiBaseUrl(value: string | undefined): string {
       "CHUTES_API_BASE_URL must use HTTPS (HTTP is allowed only for loopback development) and contain no credentials, query, or fragment.",
     );
   }
-  return raw.replace(/\/+$/, "");
+  let end = raw.length;
+  while (end > 0 && raw.charCodeAt(end - 1) === 47) end--;
+  return raw.slice(0, end);
 }
 
 /**
