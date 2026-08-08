@@ -16,10 +16,10 @@ Security fixes are applied to the latest published release. Please upgrade to th
 
 - It is read **only** from the `CHUTES_API_KEY` environment variable; it is never written to disk by
   this tool.
-- It is sent only in the `Authorization` header to the Chutes API and to a model's own
-  HTTPS `*.chutes.ai` subdomain. Invocation URLs supplied by the catalog are rejected if they point
-  anywhere else. When a result references an external (non-`chutes.ai`) asset URL, the key is **not**
-  attached to that download.
+- It is sent only in the `Authorization` header to HTTPS `chutes.ai` / `*.chutes.ai` hosts.
+  Invocation URLs supplied by the catalog are rejected if they point anywhere else. Custom or
+  loopback management endpoints remain usable but receive no Chutes API key. When a result
+  references an external asset URL, the key is **not** attached to that download.
 - It is never logged. The MCP server writes logs to stderr only; stdout carries the JSON-RPC channel.
 - `.gitignore` blocks `.env`, `*.key`, and `*.pem`, and the published npm package excludes source,
   test, environment, and repository-maintenance files.
@@ -35,8 +35,8 @@ Security fixes are applied to the latest published release. Please upgrade to th
   destinations are rejected.
 - Network-error messages retain the destination origin and path for troubleshooting but omit query
   strings and fragments, which commonly carry credentials in signed asset URLs.
-- Remote responses and local input assets are subject to a configurable size limit before being
-  retained in memory.
+- Successful media, management JSON, HTTP error responses, and local input assets are subject to the
+  configurable size limit before being retained in memory.
 - These controls reduce accidental and model-driven data exposure; they do not make an untrusted
   third-party model safe. Review the model and provider before sending sensitive media or prompts.
 

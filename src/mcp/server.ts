@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { ChutesClient } from "../core/chutes-client.js";
 import { loadConfig } from "../core/config.js";
+import { INPUT_LIMITS } from "../core/input-limits.js";
 import { MediaEngine, type GenerateOptions } from "../core/media-engine.js";
 import { describeView, formatError, listView } from "../core/present.js";
 import type { ChutesConfig, ProgressEvent } from "../core/types.js";
@@ -60,7 +61,11 @@ server.registerTool(
       "call describe_media_model before generate_media.",
     inputSchema: {
       kind: z.enum(["image", "video", "music", "speech"]).optional(),
-      query: z.string().max(200).optional().describe("Free-text filter on the model name."),
+      query: z
+        .string()
+        .max(INPUT_LIMITS.query)
+        .optional()
+        .describe("Free-text filter on the model name."),
       limit: z.number().int().positive().max(200).optional(),
     },
     outputSchema: {
@@ -94,7 +99,11 @@ server.registerTool(
       "(e.g. generate, and img2img/inpaint when present) with its required fields, types, " +
       "defaults and a minimal example payload.",
     inputSchema: {
-      model: z.string().min(1).max(512).describe("Model name/slug, e.g. owner/model-slug."),
+      model: z
+        .string()
+        .min(1)
+        .max(INPUT_LIMITS.model)
+        .describe("Model name/slug, e.g. owner/model-slug."),
     },
     outputSchema: {
       model: z.string(),
@@ -131,15 +140,19 @@ server.registerTool(
       "output_dir (default ./assets/chutes/<kind>/) and the saved path is returned. Long video/" +
       "music jobs block with progress updates.",
     inputSchema: {
-      model: z.string().min(1).max(512),
+      model: z.string().min(1).max(INPUT_LIMITS.model),
       kind: z.enum(["image", "video", "music", "speech"]),
       params: z.record(z.unknown()).describe("Payload matching the cord's input schema."),
       cord: z
         .string()
-        .max(200)
+        .max(INPUT_LIMITS.cord)
         .optional()
         .describe("Operation/cord (e.g. img2img); defaults to the primary one."),
-      output_dir: z.string().max(1_024).optional().describe("Output directory relative to CWD."),
+      output_dir: z
+        .string()
+        .max(INPUT_LIMITS.outputDir)
+        .optional()
+        .describe("Output directory relative to CWD."),
       filename: z.string().min(1).max(255).optional(),
       timeout_ms: z.number().int().positive().max(2_147_483_647).optional(),
       overwrite: z

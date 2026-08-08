@@ -104,7 +104,7 @@ The server saves the asset for you; this explains what it does so results are pr
 | ------------------------------ | ----------------------- | ------------------------------------------------------------------------- |
 | `CHUTES_API_KEY`               | — (required)            | Chutes API key.                                                           |
 | `CHUTES_AUTH_SCHEME`           | `raw`                   | `raw` sends the key as-is; `bearer` prefixes `Bearer `.                   |
-| `CHUTES_API_BASE_URL`          | `https://api.chutes.ai` | Management API URL; HTTPS is required except on loopback.                 |
+| `CHUTES_API_BASE_URL`          | `https://api.chutes.ai` | Management API URL; custom/loopback endpoints receive no Chutes API key.  |
 | `CHUTES_OUTPUT_DIR`            | `assets/chutes`         | Base output dir (a `<kind>/` subfolder is appended).                      |
 | `CHUTES_WARMUP`                | `true`                  | Warm models before invoking.                                              |
 | `CHUTES_COLD_START_RETRIES`    | `4`                     | Retries on cold-start `503` (0 disables).                                 |

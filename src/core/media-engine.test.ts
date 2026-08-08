@@ -107,6 +107,19 @@ describe("extensionFor", () => {
     expect(extensionFor("video/mp4", "video")).toBe("mp4");
     expect(extensionFor("audio/mpeg", "music")).toBe("mp3");
     expect(extensionFor("application/octet-stream", "speech")).toBe("wav");
+    expect(extensionFor(`image/${"a".repeat(128)}`, "image")).toBe("png");
+  });
+});
+
+describe("MediaEngine.describe", () => {
+  it("bounds the short-lived model cache", async () => {
+    const ff = router([[/api\.chutes\.ai\/chutes\//, () => json(imageChute)]]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+    for (let index = 0; index < 129; index++) {
+      await engine.describe(`model-${index}`);
+    }
+    await engine.describe("model-0");
+    expect(ff.calls).toHaveLength(130);
   });
 });
 
@@ -216,6 +229,15 @@ describe("MediaEngine.generate", () => {
         filename: "../outside.png",
       }),
     ).rejects.toThrow(/single file name/);
+    await expect(
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: dir,
+        filename: `${"a".repeat(247)}.png`,
+      }),
+    ).rejects.toThrow(/single file name/);
     expect(ff.calls).toHaveLength(0);
   });
 
@@ -240,6 +262,24 @@ describe("MediaEngine.generate", () => {
       }),
     ).rejects.toThrow(/outside the current workspace/);
     expect(existsSync(path.join(outside, "created-by-escape"))).toBe(false);
+    expect(ff.calls.some((url) => url.endsWith("/generate"))).toBe(false);
+  });
+
+  it("rejects output paths rooted in a file before invoking the GPU cord", async () => {
+    const workspace = await tmpdir();
+    await writeFile(path.join(workspace, "not-a-directory"), "file");
+    const ff = router([[/api\.chutes\.ai\/chutes\//, () => json(imageChute)]]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+
+    await expect(
+      engine.generate({
+        model: "myuser/my-image-gen",
+        kind: "image",
+        params: { prompt: "x" },
+        cwd: workspace,
+        outputDir: path.join("not-a-directory", "nested"),
+      }),
+    ).rejects.toThrow(/through a directory/);
     expect(ff.calls.some((url) => url.endsWith("/generate"))).toBe(false);
   });
 
@@ -333,6 +373,31 @@ describe("MediaEngine.generate", () => {
     expect(events.some((e) => e.stage === "warmup")).toBe(true);
     expect(events.some((e) => e.stage === "saved")).toBe(true);
     expect(ff.calls.some((u) => /warmup/.test(u))).toBe(true);
+  });
+
+  it("keeps automatic filenames portable for long models and MIME subtypes", async () => {
+    const dir = await tmpdir();
+    const ff = router([
+      [/\/chutes\/warmup\//, () => json({})],
+      [/api\.chutes\.ai\/chutes\//, () => json(imageChute)],
+      [
+        /myuser-my-image-gen\.chutes\.ai\/generate/,
+        () => bytesResponse([1, 2, 3], `image/${"a".repeat(128)}`),
+      ],
+    ]);
+    const engine = new MediaEngine(new ChutesClient(makeConfig(), ff), makeConfig());
+    const result = await engine.generate({
+      model: `owner/${"model".repeat(80)}`,
+      kind: "image",
+      params: { prompt: "x" },
+      cwd: dir,
+    });
+
+    expect(Buffer.byteLength(path.basename(result.provenancePath!), "utf8")).toBeLessThanOrEqual(
+      255,
+    );
+    expect(path.extname(result.path)).toBe(".png");
+    expect(Array.from(await readFile(result.path))).toEqual([1, 2, 3]);
   });
 
   it("writes a provenance sidecar with the pinned schema hash", async () => {
