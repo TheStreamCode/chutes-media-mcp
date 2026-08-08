@@ -135,7 +135,7 @@ export class ChutesClient {
     } catch (err) {
       throw mapNetworkError(err, params.url);
     }
-    if (!res.ok) throw await mapHttpError(res);
+    if (!res.ok) throw await mapHttpError(res, this.config.maxAssetBytes);
     const contentType = res.headers.get("content-type") ?? "application/octet-stream";
     const cost = parseCostHeader(res.headers);
     const bytes = await readResponseBytes(res, this.config.maxAssetBytes);
@@ -168,7 +168,7 @@ export class ChutesClient {
 
       if (REDIRECT_STATUSES.has(res.status)) {
         const location = res.headers.get("location");
-        if (!location) throw await mapHttpError(res);
+        if (!location) throw await mapHttpError(res, this.config.maxAssetBytes);
         if (redirects === MAX_ASSET_REDIRECTS) {
           throw new ChutesError(`Asset download exceeded ${MAX_ASSET_REDIRECTS} redirects.`);
         }
@@ -176,7 +176,7 @@ export class ChutesClient {
         continue;
       }
 
-      if (!res.ok) throw await mapHttpError(res);
+      if (!res.ok) throw await mapHttpError(res, this.config.maxAssetBytes);
       const contentType = res.headers.get("content-type") ?? "application/octet-stream";
       const bytes = await readResponseBytes(res, this.config.maxAssetBytes);
       return { bytes, contentType };
@@ -199,22 +199,30 @@ export class ChutesClient {
   }
 
   private async getJson(url: URL): Promise<unknown> {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    // A custom management endpoint remains useful for local/proxy development,
+    // but the Chutes credential must never leave an HTTPS Chutes host.
+    if (isSecureChutesUrl(url.toString())) {
+      headers.Authorization = authHeaderValue(this.config);
+    }
     let res: Response;
     try {
       res = await this.fetchImpl(url, {
         method: "GET",
-        headers: {
-          Authorization: authHeaderValue(this.config),
-          Accept: "application/json",
-        },
+        headers,
         signal: AbortSignal.timeout(MANAGEMENT_TIMEOUT_MS),
         redirect: "error",
       });
     } catch (err) {
       throw mapNetworkError(err, url.toString());
     }
-    if (!res.ok) throw await mapHttpError(res);
-    return res.json();
+    if (!res.ok) throw await mapHttpError(res, this.config.maxAssetBytes);
+    const bytes = await readResponseBytes(res, this.config.maxAssetBytes);
+    try {
+      return JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      throw new ChutesError("Chutes returned an invalid JSON response.");
+    }
   }
 }
 
@@ -349,11 +357,11 @@ function resolveInvokeBaseUrl(
   summary: ChuteSummary,
 ): string | undefined {
   const explicit = pickString(raw, "invocation_url") ?? pickString(raw, "invoke_url");
-  if (explicit) return explicit.replace(/\/+$/, "");
+  if (explicit) return trimTrailingSlashes(explicit);
   const subdomain = pickString(raw, "subdomain");
   if (subdomain) {
-    if (/^https?:\/\//i.test(subdomain)) return subdomain.replace(/\/+$/, "");
-    const label = subdomain.replace(/^\.+|\.+$/g, "");
+    if (/^https?:\/\//i.test(subdomain)) return trimTrailingSlashes(subdomain);
+    const label = trimEdgeDots(subdomain);
     if (label) return `https://${label}.chutes.ai`;
   }
   // Chutes' `slug` is the full subdomain label and already includes the owner
@@ -400,8 +408,8 @@ export function inferKind(input: {
 // Error mapping
 // ---------------------------------------------------------------------------
 
-async function mapHttpError(res: Response): Promise<ChutesError> {
-  const body = await safeReadBody(res);
+async function mapHttpError(res: Response, maxBytes: number): Promise<ChutesError> {
+  const body = await safeReadBody(res, maxBytes);
   const detail = bodyMessage(body);
   switch (res.status) {
     case 401:
@@ -460,9 +468,9 @@ function mapNetworkError(err: unknown, url: string): ChutesError {
   );
 }
 
-async function safeReadBody(res: Response): Promise<unknown> {
+async function safeReadBody(res: Response, maxBytes: number): Promise<unknown> {
   try {
-    const text = await res.text();
+    const text = new TextDecoder().decode(await readResponseBytes(res, maxBytes));
     if (!text) return undefined;
     try {
       return JSON.parse(text);
@@ -500,6 +508,20 @@ function asObject(v: unknown): Record<string, unknown> {
 function pickString(obj: Record<string, unknown>, key: string): string | undefined {
   const v = obj[key];
   return typeof v === "string" && v.length > 0 ? v : undefined;
+}
+
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end--;
+  return value.slice(0, end);
+}
+
+function trimEdgeDots(value: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value.charCodeAt(start) === 46) start++;
+  while (end > start && value.charCodeAt(end - 1) === 46) end--;
+  return value.slice(start, end);
 }
 
 /** Best-effort: some chutes expose the invocation cost via a response header. */

@@ -113,6 +113,21 @@ describe("ChutesClient.describe", () => {
     const detail = await new ChutesClient(makeConfig(), ff).describe("m");
     expect(detail.invokeBaseUrl).toBe("https://owner-model.chutes.ai");
   });
+
+  it("trims catalog URL delimiters with bounded scans", async () => {
+    const longPath = `${"/".repeat(20_000)}x`;
+    const ff = fakeFetch(() =>
+      json({ name: "m", invocation_url: `https://owner.chutes.ai/${longPath}`, cords: [] }),
+    );
+    const detail = await new ChutesClient(makeConfig(), ff).describe("m");
+    expect(detail.invokeBaseUrl).toBe(`https://owner.chutes.ai/${longPath}`);
+
+    const dotted = fakeFetch(() =>
+      json({ name: "m", subdomain: `${".".repeat(128)}owner-model${".".repeat(128)}`, cords: [] }),
+    );
+    const normalized = await new ChutesClient(makeConfig(), dotted).describe("m");
+    expect(normalized.invokeBaseUrl).toBe("https://owner-model.chutes.ai");
+  });
 });
 
 describe("ChutesClient auth + invoke", () => {
@@ -126,6 +141,29 @@ describe("ChutesClient auth + invoke", () => {
     const ff = fakeFetch(() => json([]));
     await new ChutesClient(makeConfig({ authScheme: "bearer" }), ff).list();
     expect(authOf(ff.calls[0]!.init)).toBe("Bearer cpk_test");
+  });
+
+  it("never sends the Chutes key to a custom management endpoint", async () => {
+    const ff = fakeFetch(() => json([]));
+    const config = makeConfig({ apiBaseUrl: "https://proxy.example/api" });
+    await new ChutesClient(config, ff).list();
+    expect(authOf(ff.calls[0]!.init)).toBeUndefined();
+  });
+
+  it("bounds management JSON responses before parsing", async () => {
+    const ff = fakeFetch(() => json([{ name: "too-large" }]));
+    const client = new ChutesClient(makeConfig({ maxAssetBytes: 2 }), ff);
+    await expect(client.list()).rejects.toThrow(/asset limit/);
+  });
+
+  it("maps malformed management JSON to a ChutesError", async () => {
+    const ff = fakeFetch(
+      () => new Response("not-json", { headers: { "content-type": "application/json" } }),
+    );
+    await expect(new ChutesClient(makeConfig(), ff).list()).rejects.toMatchObject({
+      name: "ChutesError",
+      message: "Chutes returned an invalid JSON response.",
+    });
   });
 
   it("returns raw bytes and content type from a cord invoke", async () => {
@@ -246,6 +284,18 @@ describe("ChutesClient error mapping", () => {
     } catch (err) {
       expect(err).toBeInstanceOf(ChutesError);
       expect((err as ChutesError).hint).toMatch(/CHUTES_AUTH_SCHEME/);
+    }
+  });
+
+  it("does not retain an oversized error body", async () => {
+    const ff = fakeFetch(() => json({ detail: "sensitive oversized body" }, 500));
+    const client = new ChutesClient(makeConfig({ maxAssetBytes: 2 }), ff);
+    try {
+      await client.list();
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toMatchObject({ name: "ChutesError", status: 500, body: undefined });
+      expect((err as Error).message).not.toContain("sensitive");
     }
   });
 });
