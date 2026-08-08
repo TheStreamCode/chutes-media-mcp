@@ -106,9 +106,10 @@ Version 2.0 makes the safety boundaries enforceable instead of best-effort:
 - Existing named assets are preserved unless `overwrite` / `--overwrite` is explicitly set.
 - Input and output paths must resolve inside the current workspace; symlink and junction escapes are
   rejected.
-- Custom management API URLs require HTTPS, except loopback URLs used for local development.
-- Invocation credentials are sent only to HTTPS Chutes hosts, and asset downloads must resolve to
-  public HTTPS destinations.
+- Custom management API URLs require HTTPS, except loopback URLs used for local development. The
+  Chutes API key is never attached to custom or loopback management endpoints.
+- Management and invocation credentials are sent only to HTTPS Chutes hosts, and asset downloads
+  must resolve to public HTTPS destinations.
 - Responses and local input assets are capped by `CHUTES_MAX_ASSET_MB` (512 MiB by default).
 
 If an existing automation intentionally replaces a file, add the explicit overwrite option after
@@ -120,7 +121,7 @@ confirming the target path.
 | ------------------------------ | -------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `CHUTES_API_KEY`               | ✅       | —                       | Your Chutes API key. Read from the environment; never written to disk.                                                       |
 | `CHUTES_AUTH_SCHEME`           |          | `raw`                   | How the key is sent in `Authorization`: `raw` (the key as-is) or `bearer` (prefixed `Bearer `). On a 401, try flipping this. |
-| `CHUTES_API_BASE_URL`          |          | `https://api.chutes.ai` | Management API base URL. HTTPS is required except for loopback development.                                                  |
+| `CHUTES_API_BASE_URL`          |          | `https://api.chutes.ai` | Management API base URL. HTTPS is required except for loopback development; custom endpoints receive no Chutes API key.      |
 | `CHUTES_OUTPUT_DIR`            |          | `assets/chutes`         | Output directory inside the agent's CWD. A `<kind>/` subfolder is appended.                                                  |
 | `CHUTES_WARMUP`                |          | `true`                  | Warm models up before invoking. Set `false` to skip.                                                                         |
 | `CHUTES_COLD_START_RETRIES`    |          | `4`                     | Retries when a cold model returns `503 no-instances` (`0` disables).                                                         |

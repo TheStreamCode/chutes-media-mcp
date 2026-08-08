@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Security
+
+- Send `CHUTES_API_KEY` only to HTTPS `chutes.ai` / `*.chutes.ai` management and invocation URLs;
+  custom and loopback management endpoints now receive no credential.
+- Bound management JSON and HTTP error bodies with `CHUTES_MAX_ASSET_MB`, and replace remaining
+  catalog-controlled trailing-delimiter regexes with linear scans.
+- Refresh vulnerable transitive dependencies for URL parsing, IP classification, Hono middleware,
+  and Nano ID generation.
+
+### Fixed
+
+- Bound the short-lived model description cache, reject non-directory output ancestors before a GPU
+  invocation, and keep generated asset plus provenance filenames within filesystem limits.
+- Share MCP input limits with the CLI so both frontends reject oversized model, query, cord, and
+  output values consistently.
+
 ## [2.0.2] — 2026-08-01
 
 Backward-compatible security hardening, MCP metadata, documentation, and repository hygiene. No
