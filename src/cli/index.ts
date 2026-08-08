@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { ChutesClient } from "../core/chutes-client.js";
 import { loadConfig } from "../core/config.js";
+import { assertTextLength, INPUT_LIMITS } from "../core/input-limits.js";
 import { MediaEngine } from "../core/media-engine.js";
 import { describeView, formatError, listView } from "../core/present.js";
 import { MEDIA_KINDS, type MediaKind } from "../core/types.js";
@@ -110,9 +111,13 @@ async function main() {
 
   switch (cmd) {
     case "list": {
+      const query =
+        values.query === undefined
+          ? undefined
+          : assertTextLength(values.query, "--query", INPUT_LIMITS.query);
       const models = await buildEngine().list({
         kind: values.kind ? asKind(values.kind) : undefined,
-        query: values.query,
+        query,
         limit: values.limit ? positiveInteger(values.limit, "--limit", 200) : undefined,
       });
       printResult({ count: models.length, models: listView(models) });
@@ -122,7 +127,11 @@ async function main() {
     case "describe": {
       const model = values.model ?? positionals[1];
       if (!model) throw new Error("describe requires a model: chutes-media describe <model>");
-      printResult(describeView(await buildEngine().describe(model)));
+      printResult(
+        describeView(
+          await buildEngine().describe(assertTextLength(model, "model", INPUT_LIMITS.model)),
+        ),
+      );
       return;
     }
 
@@ -130,12 +139,21 @@ async function main() {
       if (!values.model) throw new Error("generate requires --model");
       if (!values.params) throw new Error("generate requires --params");
       const kind = asKind(values.kind);
+      const model = assertTextLength(values.model, "--model", INPUT_LIMITS.model);
+      const cord =
+        values.cord === undefined
+          ? undefined
+          : assertTextLength(values.cord, "--cord", INPUT_LIMITS.cord);
+      const outputDir =
+        values.output === undefined
+          ? undefined
+          : assertTextLength(values.output, "--output", INPUT_LIMITS.outputDir);
       const result = await buildEngine().generate({
-        model: values.model,
+        model,
         kind,
         params: loadParams(values.params),
-        cord: values.cord,
-        outputDir: values.output,
+        cord,
+        outputDir,
         filename: values.filename,
         timeoutMs: values.timeout
           ? positiveInteger(values.timeout, "--timeout", 2_147_483_647)
