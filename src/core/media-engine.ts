@@ -38,6 +38,7 @@ export interface GenerateOptions {
 }
 
 const DESCRIBE_TTL_MS = 60_000;
+const MAX_DESCRIBE_CACHE_ENTRIES = 128;
 
 /** Cords that edit existing media — never auto-selected as the primary operation. */
 const EDIT_CORDS = new Set(["img2img", "inpaint", "image2image", "edit", "outpaint"]);
@@ -89,9 +90,17 @@ export class MediaEngine {
 
   /** Describe a model, memoised for a short TTL (shared by the describe tool). */
   async describe(model: string): Promise<ChuteDetail> {
+    const now = monotonicNow();
     const cached = this.describeCache.get(model);
-    if (cached && cached.expires > monotonicNow()) return cached.detail;
+    if (cached && cached.expires > now) return cached.detail;
+    for (const [key, entry] of this.describeCache) {
+      if (entry.expires <= now) this.describeCache.delete(key);
+    }
     const detail = await this.client.describe(model);
+    if (!this.describeCache.has(model) && this.describeCache.size >= MAX_DESCRIBE_CACHE_ENTRIES) {
+      const oldestKey = this.describeCache.keys().next().value;
+      if (oldestKey !== undefined) this.describeCache.delete(oldestKey);
+    }
     this.describeCache.set(model, { detail, expires: monotonicNow() + DESCRIBE_TTL_MS });
     return detail;
   }
@@ -108,7 +117,10 @@ export class MediaEngine {
     if (!isInsideWorkspace(requestedDir, workspaceRoot)) {
       throw new ChutesError("Output directory must stay inside the current workspace.");
     }
-    const requestedFilename = opts.filename ? validateFilename(opts.filename) : undefined;
+    const sidecarBytes = this.config.writeProvenance ? Buffer.byteLength(".json", "utf8") : 0;
+    const requestedFilename = opts.filename
+      ? validateFilename(opts.filename, sidecarBytes)
+      : undefined;
 
     emit({ stage: "describing", message: `Describing ${opts.model}` });
     const detail = await this.describe(opts.model);
@@ -191,7 +203,7 @@ export class MediaEngine {
 
     // 6. Save into the workspace.
     const ext = extensionFor(asset.contentType, opts.kind);
-    const filename = requestedFilename ?? `${sanitize(opts.model)}-${timestamp()}.${ext}`;
+    const filename = requestedFilename ?? defaultFilename(opts.model, ext, 255 - sidecarBytes);
     const outPath = path.join(dir, filename);
     const provenancePath = this.config.writeProvenance ? `${outPath}.json` : undefined;
     if (
@@ -492,11 +504,17 @@ async function prepareOutputDirectory(
   if (!isInsideWorkspace(realAncestor, realWorkspaceRoot)) {
     throw new ChutesError("Output directory resolves outside the current workspace.");
   }
+  if (!(await stat(realAncestor)).isDirectory()) {
+    throw new ChutesError("Output path must resolve through a directory.");
+  }
 
   await mkdir(requestedDir, { recursive: true });
   const realDirectory = await realpath(requestedDir);
   if (!isInsideWorkspace(realDirectory, realWorkspaceRoot)) {
     throw new ChutesError("Output directory resolves outside the current workspace.");
+  }
+  if (!(await stat(realDirectory)).isDirectory()) {
+    throw new ChutesError("Output path must resolve to a directory.");
   }
   return realDirectory;
 }
@@ -587,7 +605,7 @@ export function extensionFor(contentType: string, kind: MediaKind): string {
   const knownExtension = EXT_BY_CONTENT_TYPE[ct];
   if (knownExtension) return knownExtension;
   const sub = ct.split("/")[1];
-  if (sub && /^[a-z0-9]+$/.test(sub)) return sub;
+  if (sub && sub.length <= 16 && /^[a-z0-9]+$/.test(sub)) return sub;
   return FALLBACK_EXT[kind];
 }
 
@@ -654,13 +672,20 @@ function sanitize(name: string): string {
   return replaced.slice(start, end) || "asset";
 }
 
+function defaultFilename(model: string, extension: string, maxBytes: number): string {
+  const suffix = `-${timestamp()}.${extension}`;
+  const maxStemBytes = maxBytes - Buffer.byteLength(suffix, "utf8");
+  const stem = sanitize(model).slice(0, Math.max(1, maxStemBytes));
+  return `${stem}${suffix}`;
+}
+
 function stripLeadingSlashes(value: string): string {
   let start = 0;
   while (start < value.length && value.charCodeAt(start) === 47) start++;
   return value.slice(start);
 }
 
-function validateFilename(filename: string): string {
+function validateFilename(filename: string, reservedSuffixBytes = 0): string {
   if (
     filename.length === 0 ||
     filename === "." ||
@@ -669,7 +694,7 @@ function validateFilename(filename: string): string {
     /[<>:"/\\|?*]/.test(filename) ||
     hasControlCharacter(filename) ||
     /[. ]$/.test(filename) ||
-    Buffer.byteLength(filename, "utf8") > 255
+    Buffer.byteLength(filename, "utf8") + reservedSuffixBytes > 255
   ) {
     throw new ChutesError("filename must be a valid single file name without path separators.");
   }
