@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.0.3] — 2026-08-08
+
 ### Security
 
 - Send `CHUTES_API_KEY` only to HTTPS `chutes.ai` / `*.chutes.ai` management and invocation URLs;
@@ -174,7 +176,8 @@ Initial release.
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.3...HEAD
+[2.0.3]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v1.2.2...v2.0.0
