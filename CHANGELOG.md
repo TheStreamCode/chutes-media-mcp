@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.0.4] — 2026-08-08
+
+### Added
+
+- Add verified package metadata and a `server.json` manifest for publication in the official MCP
+  Registry.
+- Add a project-owned social preview that does not reuse Chutes marks or modify the existing logo.
+
+### Changed
+
+- Rework the README around a copy-paste quick start, clearer product positioning, support routes,
+  and a less dominant rendering of the existing project image.
+- Expand npm and GitHub discovery keywords for MCP servers, developer tools, and generative media.
+
 ## [2.0.3] — 2026-08-08
 
 ### Security
@@ -176,7 +190,8 @@ Initial release.
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.3...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.4...HEAD
+[2.0.4]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.0...v2.0.1

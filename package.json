@@ -1,6 +1,7 @@
 {
   "name": "chutes-media-mcp",
-  "version": "2.0.3",
+  "version": "2.0.4",
+  "mcpName": "io.github.thestreamcode/chutes-media-mcp",
   "description": "MCP server + CLI to generate image, video, music and speech through Chutes, saving assets into your project.",
   "type": "module",
   "license": "MIT",
@@ -62,7 +63,11 @@
     "video-generation",
     "text-to-speech",
     "music-generation",
-    "ai"
+    "ai",
+    "mcp-server",
+    "developer-tools",
+    "generative-ai",
+    "media-generation"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

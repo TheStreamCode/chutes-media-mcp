@@ -4,13 +4,38 @@
 [![Node >= 20.3](https://img.shields.io/badge/node-%3E%3D20.3-brightgreen.svg)](https://nodejs.org)
 [![npm](https://img.shields.io/npm/v/chutes-media-mcp.svg)](https://www.npmjs.com/package/chutes-media-mcp)
 [![CI](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml)
-[![Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
-
-![chutes-media-mcp](https://raw.githubusercontent.com/TheStreamCode/chutes-media-mcp/main/assets/chutes-media-mcp.png)
 
 Generate **image, video, music and speech** through [Chutes](https://chutes.ai) from inside any
-coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, OpenCode, Claude Desktop — and have the generated
-asset saved straight into the project you're working on.
+coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, OpenCode, Claude Desktop — and save the
+generated asset straight into the project you're working on.
+
+> **Independent community project.** Not officially affiliated with or endorsed by Chutes.
+
+## Quick start
+
+Requires **Node.js 20.3+** and a [Chutes API key](https://chutes.ai). Add the server to Claude Code:
+
+```bash
+claude mcp add chutes-media --env CHUTES_API_KEY=cpk_your_key -- npx -y chutes-media-mcp
+```
+
+Then ask your agent naturally:
+
+> Generate a cinematic hero image of a misty mountain range and save it in this project.
+
+The agent discovers a suitable model, reads its live input schema, validates the request, and saves
+the result under `assets/chutes/<kind>/`. For Cursor, Cline, Windsurf, OpenCode and Claude Desktop,
+see [Use as an MCP server](#use-as-an-mcp-server).
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/TheStreamCode/chutes-media-mcp/main/assets/chutes-media-mcp.png" alt="chutes-media-mcp" width="720">
+</p>
+
+## Why chutes-media-mcp?
+
+| Live model contract                                               | Safer project I/O                                                              | Project-native output                                                    | One shared core                                                            |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Reads each model's current schema instead of hardcoding payloads. | Contains file access to the workspace and protects existing assets by default. | Saves generated media and optional provenance directly beside your code. | MCP and CLI expose the same discovery, validation and generation behavior. |
 
 It ships as:
 
@@ -19,11 +44,7 @@ It ships as:
 - an optional **Agent Skill** ([`skill/chutes-media`](./skill/chutes-media)) documenting the
   describe→generate workflow (auto-loaded by Claude Code; usable as reference by any agent).
 
-Both frontends are thin adapters over one shared, transport-agnostic core, so they behave
-identically.
-
-> **Not officially affiliated with or endorsed by Chutes.** "Chutes" belongs to its respective
-> owners; this is an independent, open-source community tool.
+Both frontends are thin adapters over one shared, transport-agnostic core.
 
 ---
 
@@ -63,7 +84,7 @@ downloading, saving, light validation, and best-effort cost reporting.
 - Contributors using the locked quality toolchain need **Node.js ^20.19.0, ≥ 22.13.0, or ≥ 24**
 - A **Chutes API key** (`CHUTES_API_KEY`). Create one in your Chutes account.
 
-## Install
+## Installation options
 
 An MCP server isn't "installed" like an app — it's registered as a **command** in your MCP client's
 config (see [Use as an MCP server](#use-as-an-mcp-server)). Pick whichever way of providing that
@@ -98,22 +119,6 @@ cd chutes-media-mcp && npm ci && npm run build
 ```
 
 > The package ships two bins: `chutes-media-mcp` (the MCP server) and `chutes-media` (the CLI).
-
-### Upgrading from 1.x
-
-Version 2.0 makes the safety boundaries enforceable instead of best-effort:
-
-- Existing named assets are preserved unless `overwrite` / `--overwrite` is explicitly set.
-- Input and output paths must resolve inside the current workspace; symlink and junction escapes are
-  rejected.
-- Custom management API URLs require HTTPS, except loopback URLs used for local development. The
-  Chutes API key is never attached to custom or loopback management endpoints.
-- Management and invocation credentials are sent only to HTTPS Chutes hosts, and asset downloads
-  must resolve to public HTTPS destinations.
-- Responses and local input assets are capped by `CHUTES_MAX_ASSET_MB` (512 MiB by default).
-
-If an existing automation intentionally replaces a file, add the explicit overwrite option after
-confirming the target path.
 
 ## Configuration
 
@@ -275,12 +280,36 @@ asset URLs are screened against private-network destinations, and file access is
 workspace. Query strings and fragments are removed from network-error messages so signed asset URLs
 are not copied into logs. See [SECURITY.md](./SECURITY.md) for details and vulnerability reporting.
 
+## Migrating from 1.x
+
+Version 2.0 makes the safety boundaries enforceable instead of best-effort:
+
+- Existing named assets are preserved unless `overwrite` / `--overwrite` is explicitly set.
+- Input and output paths must resolve inside the current workspace; symlink and junction escapes are
+  rejected.
+- Custom management API URLs require HTTPS, except loopback URLs used for local development. The
+  Chutes API key is never attached to custom or loopback management endpoints.
+- Management and invocation credentials are sent only to HTTPS Chutes hosts, and asset downloads
+  must resolve to public HTTPS destinations.
+- Responses and local input assets are capped by `CHUTES_MAX_ASSET_MB` (512 MiB by default).
+
+If an existing automation intentionally replaces a file, add the explicit overwrite option after
+confirming the target path.
+
+## Support
+
+- Ask usage questions in [GitHub Discussions](https://github.com/TheStreamCode/chutes-media-mcp/discussions).
+- Report reproducible bugs through [GitHub Issues](https://github.com/TheStreamCode/chutes-media-mcp/issues).
+- Report vulnerabilities privately by following [SECURITY.md](./SECURITY.md).
+
 ## Author
 
 Built by **[Michael Gasperini](https://mikesoft.it)** — founder of [Mikesoft](https://mikesoft.it),
 building small, focused, privacy-aware developer tools.
 
-If this project is useful to you, consider [sponsoring its development](https://github.com/sponsors/TheStreamCode). 💛
+[![Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
+
+If this project is useful to you, consider [sponsoring its development](https://github.com/sponsors/TheStreamCode).
 
 ## License
 

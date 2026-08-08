@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.thestreamcode/chutes-media-mcp",
+  "title": "Chutes Media MCP",
+  "description": "Generate image, video, music and speech through Chutes and save assets into your project.",
+  "repository": {
+    "url": "https://github.com/TheStreamCode/chutes-media-mcp",
+    "source": "github"
+  },
+  "version": "2.0.4",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "chutes-media-mcp",
+      "version": "2.0.4",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "CHUTES_API_KEY",
+          "description": "Chutes API key used for authenticated model discovery and generation.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
