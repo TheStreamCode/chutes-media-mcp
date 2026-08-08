@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.0.5] — 2026-08-08
+
+### Fixed
+
+- Preserve the case-sensitive GitHub account name in MCP Registry metadata so the namespace matches
+  the publisher identity authorized by the registry.
+
 ## [2.0.4] — 2026-08-08
 
 ### Added
@@ -190,7 +197,8 @@ Initial release.
 - No default models are hardcoded — the catalog changes, so models are always discovered via
   `list_media_models` / `describe_media_model`.
 
-[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.4...HEAD
+[Unreleased]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.5...HEAD
+[2.0.5]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.4...v2.0.5
 [2.0.4]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/TheStreamCode/chutes-media-mcp/compare/v2.0.1...v2.0.2
