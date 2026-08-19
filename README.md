@@ -313,9 +313,9 @@ If this project is useful to you, consider [sponsoring its development](https://
 
 ## License
 
-[MIT](./LICENSE) © Michael Gasperini (Mikesoft). Project-owned code,
-documentation, and other project-created materials are MIT-licensed except for
-the third-party rights below.
+Project-owned code, documentation, and other project-created materials are
+licensed under the [MIT License](LICENSE), except for the third-party rights
+below.
 
 ## Third-party notices and provider terms
 
