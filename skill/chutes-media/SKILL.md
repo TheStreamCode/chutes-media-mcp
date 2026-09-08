@@ -1,5 +1,5 @@
 ---
-name: Chutes Media
+name: chutes-media
 description: This skill should be used when the user asks to "generate an image", "create a hero image", "make a video", "generate music", "create a voiceover", "text to speech", "edit this image", or otherwise produce image/video/music/speech assets inside a project. It documents the describe→generate workflow of the chutes-media-mcp tools (list_media_models, describe_media_model, generate_media) and the equivalent chutes-media CLI.
 version: 0.1.0
 ---
