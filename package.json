@@ -83,7 +83,7 @@
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.1"
   },
   "overrides": {
     "@hono/node-server": "^2.0.12",
