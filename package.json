@@ -5,12 +5,12 @@
   "description": "MCP server + CLI to generate image, video, music and speech through Chutes, saving assets into your project.",
   "type": "module",
   "license": "MIT",
-  "author": "Michael Gasperini <info@mikesoft.it> (https://mikesoft.it)",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/TheStreamCode/chutes-media-mcp.git"
+  "author": {
+    "name": "Michael Gasperini",
+    "url": "https://mikesoft.it"
   },
-  "homepage": "https://github.com/TheStreamCode/chutes-media-mcp#readme",
+  "repository": "github:TheStreamCode/chutes-media-mcp",
+  "homepage": "https://www.npmjs.com/package/chutes-media-mcp",
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/TheStreamCode"
@@ -67,10 +67,12 @@
     "mcp-server",
     "developer-tools",
     "generative-ai",
+    "cli",
+    "typescript",
     "media-generation"
   ],
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "ajv": "^8.20.0",
     "zod": "^4.6.5"
   },
