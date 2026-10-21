@@ -171,7 +171,10 @@ block or the shell, and is never written to disk. Do not add dotenv loading.
 - **`@types/node ^20.19.43`** is pinned to the _minimum supported_ Node version on purpose. Dependabot
   bumps to 26.x were reverted by `fix: align Node runtime requirements`. Do not raise it while
   `engines.node` is `>=20.3`.
-- **`zod ^3`** — the MCP SDK's schema API expects v3. Do not move to v4.
+- **`zod ^4`** — the MCP SDK supports Zod 3 and 4 through its compatibility layer, and the server
+  uses the Zod 4 API. In Zod 4 `z.record` takes an explicit key schema
+  (`z.record(z.string(), z.unknown())`); never mix Zod 3 and Zod 4 schema instances in one shape.
+  Do not downgrade to Zod 3.
 - **`typescript ^6`** — a v7 bump was evaluated and closed (PR #8). Leave it.
 - **Dependabot** is configured in `.github/dependabot.yml` for npm and GitHub Actions. It groups
   minor and patch updates; major updates arrive as individual pull requests and need a human review.
