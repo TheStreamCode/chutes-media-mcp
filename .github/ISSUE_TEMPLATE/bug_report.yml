@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a reproducible defect in the MCP server or CLI
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a defect.
+        Fill in every field: reports without a version and a reproduction are hard to act on.
+        For security issues use SECURITY.md, never a public issue.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release tag or package version.
+      placeholder: "v2.0.5"
+    validations:
+      required: true
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Interface
+      options:
+        - MCP server
+        - CLI
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Node.js version, and the MCP client or agent you use.
+      placeholder: "Windows 11, Node.js 24, Claude Code"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Smallest sequence that shows the problem, with the tool call or command.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or error output
+      description: Include the relevant describe_media_model output if the issue is an API-shape problem. Redact tokens, cookies, and personal data.
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: This report does not contain an API key or personal data.
+          required: true
