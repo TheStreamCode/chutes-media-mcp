@@ -1,337 +1,165 @@
-# chutes-media-mcp
+# Chutes Media MCP
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node >= 20.3](https://img.shields.io/badge/node-%3E%3D20.3-brightgreen.svg)](https://nodejs.org)
-[![npm](https://img.shields.io/npm/v/chutes-media-mcp.svg)](https://www.npmjs.com/package/chutes-media-mcp)
+Generate image, video, music, and speech through Chutes from any coding agent, with the asset saved
+straight into the project you are working on.
+
 [![CI](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/chutes-media-mcp.svg)](https://www.npmjs.com/package/chutes-media-mcp)
 
-Generate **image, video, music and speech** through [Chutes](https://chutes.ai) from inside any
-coding agent — Claude Code, Cursor, Cline, Windsurf, Codex, OpenCode, Claude Desktop — and save the
-generated asset straight into the project you're working on.
+![Chutes Media MCP at work: an MCP client, the model's live schema, and media saved into the workspace](https://raw.githubusercontent.com/TheStreamCode/chutes-media-mcp/main/assets/chutes-media-mcp.png)
 
-> **Independent community project.** Not officially affiliated with or endorsed by Chutes.
+Chutes Media MCP is a Model Context Protocol (MCP) server and command-line interface (CLI) that give
+coding agents access to Chutes media models. It ships as an MCP server on standard input/output
+(stdio), a thin CLI for agents without MCP support, and a bundled Agent Skill for the describe-then-generate
+workflow.
 
-## Quick start
+Instead of hardcoding a payload per model, the server fetches the model's live schema and validates
+each request before spending a GPU call, then writes the asset and a provenance record into your
+workspace. It works with Claude Code, Cursor, Cline, Windsurf, Codex, OpenCode, and Claude Desktop.
 
-Requires **Node.js 20.3+** and a [Chutes API key](https://chutes.ai). Add the server to Claude Code:
+This is an independent community project. It is not affiliated with, sponsored by, or endorsed by
+Chutes.
 
-```bash
-claude mcp add chutes-media --env CHUTES_API_KEY=cpk_your_key -- npx -y chutes-media-mcp
-```
+## Install
 
-Then ask your agent naturally:
-
-> Generate a cinematic hero image of a misty mountain range and save it in this project.
-
-The agent discovers a suitable model, reads its live input schema, validates the request, and saves
-the result under `assets/chutes/<kind>/`. For Cursor, Cline, Windsurf, OpenCode and Claude Desktop,
-see [Use as an MCP server](#use-as-an-mcp-server).
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/TheStreamCode/chutes-media-mcp/main/assets/chutes-media-mcp.png" alt="chutes-media-mcp" width="720">
-</p>
-
-## Why chutes-media-mcp?
-
-| Live model contract                                               | Safer project I/O                                                              | Project-native output                                                    | One shared core                                                            |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Reads each model's current schema instead of hardcoding payloads. | Contains file access to the workspace and protects existing assets by default. | Saves generated media and optional provenance directly beside your code. | MCP and CLI expose the same discovery, validation and generation behavior. |
-
-It ships as:
-
-- an **MCP server** (`chutes-media-mcp`, stdio) — the primary, universal interface,
-- a thin **CLI** (`chutes-media`) — a fallback for shells and agents without MCP support, and
-- an optional **Agent Skill** ([`skill/chutes-media`](./skill/chutes-media)) documenting the
-  describe→generate workflow (auto-loaded by Claude Code; usable as reference by any agent).
-
-Both frontends are thin adapters over one shared, transport-agnostic core.
-
----
-
-## Features
-
-- 🎨 Four media kinds: **image, video, music, speech** — plus **image editing** (img2img / inpaint)
-  when a model exposes an edit cord.
-- 🔎 **describe → generate** workflow: the live model schema is fetched and handed to the agent;
-  payloads are never hardcoded.
-- 💾 Saves assets into your project (default `./assets/chutes/<kind>/`) and returns the path.
-- ✅ **Validates** the payload against the live schema before spending a GPU call.
-- 🧾 **Provenance + guardrails**: writes a sidecar (model, params, schema hash) next to each asset,
-  rejects unknown params, and verifies the returned media type matches what you asked for.
-- 🔁 **Automatic cold-start retry** with backoff for models scaled to zero.
-- 📡 Progress updates during long video/music jobs (MCP progress notifications / CLI stderr).
-- 🧩 Works everywhere: MCP server **or** CLI, same behavior.
-
-## How it works: describe → generate
-
-Chutes models differ wildly (FLUX vs Qwen-Image vs Wan vs LTX vs ACE-Step vs a TTS model), so
-payloads are **never hardcoded**. The flow is always:
-
-1. **`list_media_models`** — discover a model for the kind you want.
-2. **`describe_media_model`** — fetch the model's live cords and input schema.
-3. **`generate_media`** — submit the payload you composed; the asset is saved into the workspace.
-
-The server owns all the plumbing: auth, cold-start warmup + retry, blocking invocation with progress,
-downloading, saving, light validation, and best-effort cost reporting.
-
----
-
-## Requirements
-
-- **Node.js ≥ 20.3** for the published MCP server and CLI
-- Use a supported LTS release (**Node.js 22 or 24**) for production. Node.js 20 compatibility is
-  retained for the current major release, but Node.js 20 itself is end-of-life.
-- Contributors using the locked quality toolchain need **Node.js ^20.19.0, ≥ 22.13.0, or ≥ 24**
-- A **Chutes API key** (`CHUTES_API_KEY`). Create one in your Chutes account.
-
-## Installation options
-
-An MCP server isn't "installed" like an app — it's registered as a **command** in your MCP client's
-config (see [Use as an MCP server](#use-as-an-mcp-server)). Pick whichever way of providing that
-command suits you:
-
-**1. `npx` from npm — recommended (no install):**
+Run the server from npm without installing it globally:
 
 ```bash
-npx chutes-media-mcp        # MCP server (stdio)
-npx -p chutes-media-mcp chutes-media --help   # CLI bin
+npx -y chutes-media-mcp
 ```
 
-**2. Global install:**
+Install it globally to put both binaries on your path:
 
 ```bash
 npm install -g chutes-media-mcp
-# then `chutes-media-mcp` (server) and `chutes-media` (CLI) are on your PATH
 ```
 
-**3. Directly from GitHub (no npm needed):** builds on install via the `prepare` script.
-
-```bash
-npx -y github:TheStreamCode/chutes-media-mcp
-```
-
-**4. From source (for development):**
-
-```bash
-git clone https://github.com/TheStreamCode/chutes-media-mcp
-cd chutes-media-mcp && npm ci && npm run build
-# then point your client at: node /abs/path/dist/mcp/server.js
-```
-
-> The package ships two bins: `chutes-media-mcp` (the MCP server) and `chutes-media` (the CLI).
-
-## Configuration
-
-| Variable                       | Required | Default                 | Purpose                                                                                                                      |
-| ------------------------------ | -------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `CHUTES_API_KEY`               | ✅       | —                       | Your Chutes API key. Read from the environment; never written to disk.                                                       |
-| `CHUTES_AUTH_SCHEME`           |          | `raw`                   | How the key is sent in `Authorization`: `raw` (the key as-is) or `bearer` (prefixed `Bearer `). On a 401, try flipping this. |
-| `CHUTES_API_BASE_URL`          |          | `https://api.chutes.ai` | Management API base URL. HTTPS is required except for loopback development; custom endpoints receive no Chutes API key.      |
-| `CHUTES_OUTPUT_DIR`            |          | `assets/chutes`         | Output directory inside the agent's CWD. A `<kind>/` subfolder is appended.                                                  |
-| `CHUTES_WARMUP`                |          | `true`                  | Warm models up before invoking. Set `false` to skip.                                                                         |
-| `CHUTES_COLD_START_RETRIES`    |          | `4`                     | Retries when a cold model returns `503 no-instances` (`0` disables).                                                         |
-| `CHUTES_COLD_START_BACKOFF_MS` |          | `8000`                  | Base backoff between cold-start retries (grows per attempt).                                                                 |
-| `CHUTES_MAX_ASSET_MB`          |          | `512`                   | Maximum response or local input-asset size accepted in memory (max `4096`).                                                  |
-| `CHUTES_PROGRESS_INTERVAL_MS`  |          | `5000`                  | How often progress heartbeats are emitted while a call blocks.                                                               |
-| `CHUTES_ALLOW_UNKNOWN_PARAMS`  |          | `false`                 | When `true`, allow params not in the model schema. Default rejects them so a renamed/unknown field fails loudly.             |
-| `CHUTES_PROVENANCE`            |          | `true`                  | Write a `<asset>.json` provenance sidecar (model, cord, params, schema hash). Set `false` to disable.                        |
-
-Generated assets are saved to `./assets/chutes/<kind>/` by default, relative to wherever the agent is
-running — so they land inside the project being worked on. Output traversal and symlink escapes are
-rejected. Existing files are not replaced unless `overwrite` is explicitly enabled.
-
----
-
-## Use as an MCP server
-
-**Claude Code:**
+Register the server with Claude Code:
 
 ```bash
 claude mcp add chutes-media --env CHUTES_API_KEY=cpk_your_key -- npx -y chutes-media-mcp
 ```
 
-**Cursor / Cline / Windsurf / OpenCode / Claude Desktop** (generic `mcpServers` config):
+For Cursor, Cline, Windsurf, OpenCode, and Claude Desktop, add the `mcpServers` entry documented in
+[`docs/mcp-and-cli.md`](docs/mcp-and-cli.md). Running from GitHub instead of npm is supported with
+`npx -y github:TheStreamCode/chutes-media-mcp`. Upgrading from 1.x? See
+[`docs/migration-2.0.md`](docs/migration-2.0.md).
 
-```json
-{
-  "mcpServers": {
-    "chutes-media": {
-      "command": "npx",
-      "args": ["-y", "chutes-media-mcp"],
-      "env": { "CHUTES_API_KEY": "cpk_your_key" }
-    }
-  }
-}
-```
+## Quick start
 
-> To run without npm, replace the args with `["-y", "github:TheStreamCode/chutes-media-mcp"]`.
+1. Create a Chutes API key at [chutes.ai](https://chutes.ai) and register the server as shown under
+   Install.
+2. Ask your agent for an asset: "Generate a cinematic hero image of a misty mountain range and save
+   it in this project."
+3. The agent discovers a suitable model, reads its live schema, validates the payload, and saves the
+   result under `assets/chutes/image/`. The returned path is ready to reference from your code.
 
-### Tools
+The same describe-then-generate flow is available from a shell through the `chutes-media` CLI. See
+[`docs/mcp-and-cli.md`](docs/mcp-and-cli.md) for the tool reference, CLI examples, and image editing.
 
-- **`list_media_models`** — `{ kind?, query?, limit? }` → matching models.
-- **`describe_media_model`** — `{ model }` → every cord with required fields, types, defaults, a
-  minimal example payload, and a top-level `supportsEditing`. Call this before generating.
-- **`generate_media`** — `{ model, kind, params, cord?, output_dir?, filename?, timeout_ms?, overwrite? }` →
-  runs the generation and returns
-  `{ path, kind, model, cord, bytes, contentType, cost?, durationMs, schemaHash?, provenancePath? }`.
-  `params` is what you composed from the described schema. `schemaHash` pins the exact cord schema the
-  payload was validated against; `provenancePath` points at the sidecar (omitted when
-  `CHUTES_PROVENANCE=false`).
+## Features
 
-Each tool publishes an output schema and returns the same JSON object both as text and as MCP
-`structuredContent`, so clients can consume typed results without parsing the text representation.
+- Four media kinds (image, video, music, speech), plus image editing when a model exposes an edit
+  cord such as `img2img` or `inpaint`.
+- Live model contract: cords and input schema are fetched at runtime, never hardcoded.
+- Payload validation against the live schema before any GPU call is made.
+- Workspace-contained file access; existing assets survive unless `overwrite` is explicitly set.
+- A provenance sidecar per asset with model, cord, params, and schema hash.
+- Automatic cold-start retry with backoff for models that scale to zero.
+- Progress updates for long video and music jobs.
+- One shared core, so the MCP server and the CLI behave identically.
 
-### Example agent workflow
+## Requirements
 
-> "Generate a hero image of a misty mountain range and drop it into the landing page."
+- Node.js 20.3 or newer for the published server and CLI. Node.js 20 is end-of-life; use Node.js 22
+  or 24 LTS in production.
+- A Chutes API key.
+- Contributors using the locked toolchain need Node.js ^20.19.0, >= 22.13.0, or >= 24.
 
-The agent calls `describe_media_model` on an image model, composes
-`{ prompt: "misty mountain range at dawn, cinematic", width: 1024, height: 1024 }`, calls
-`generate_media`, gets back `./assets/chutes/image/<model>-<timestamp>.png`, and references that path
-in `index.html`.
+## Configuration
 
----
+| Variable                       | Required | Default                 | Purpose                                                                                                                                              |
+| ------------------------------ | -------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CHUTES_API_KEY`               | Yes      | none                    | Chutes API key. Read from the environment; never written to disk.                                                                                    |
+| `CHUTES_AUTH_SCHEME`           | No       | `raw`                   | How the key is sent in `Authorization`: `raw` (the key as-is) or `bearer` (value prefixed with `Bearer` and a space). On a 401, try the other value. |
+| `CHUTES_API_BASE_URL`          | No       | `https://api.chutes.ai` | Management API base URL. HTTPS is required except for loopback development; custom endpoints never receive the Chutes API key.                       |
+| `CHUTES_OUTPUT_DIR`            | No       | `assets/chutes`         | Output directory inside the agent's working directory. A `<kind>/` subfolder is appended.                                                            |
+| `CHUTES_WARMUP`                | No       | `true`                  | Warm models up before invoking them. Set to `false` to skip warmup.                                                                                  |
+| `CHUTES_COLD_START_RETRIES`    | No       | `4`                     | Retries when a cold model returns `503 no-instances`. `0` disables retries.                                                                          |
+| `CHUTES_COLD_START_BACKOFF_MS` | No       | `8000`                  | Base backoff between cold-start retries; it grows per attempt.                                                                                       |
+| `CHUTES_MAX_ASSET_MB`          | No       | `512`                   | Maximum response or local input asset size kept in memory. The maximum is `4096`.                                                                    |
+| `CHUTES_PROGRESS_INTERVAL_MS`  | No       | `5000`                  | How often progress heartbeats are emitted while a call blocks.                                                                                       |
+| `CHUTES_ALLOW_UNKNOWN_PARAMS`  | No       | `false`                 | When `true`, accept parameters that are not in the model schema. The default rejects them so a renamed field fails loudly.                           |
+| `CHUTES_PROVENANCE`            | No       | `true`                  | Write a `<asset>.json` sidecar with model, cord, params, and schema hash. Set to `false` to disable.                                                 |
 
-## Use as a CLI
+Generated assets are saved under `./assets/chutes/<kind>/`, relative to wherever the agent runs, so
+they land inside the project. Output traversal and symlink escapes are rejected, and existing files
+are preserved unless overwrite is enabled.
 
-```bash
-export CHUTES_API_KEY="cpk_your_key"          # PowerShell: $env:CHUTES_API_KEY = "cpk_..."
+## Privacy and security
 
-# Discover models
-chutes-media list --kind image
-chutes-media list --query flux
+The API key is read from `CHUTES_API_KEY` and kept in memory. Credential-bearing requests go only to
+HTTPS Chutes hosts, remote asset URLs are screened against private-network destinations, and file
+access is contained to the workspace. Query strings and fragments are removed from network-error
+messages so signed asset URLs do not end up in logs. The project collects no telemetry. See
+[`SECURITY.md`](SECURITY.md) for reporting.
 
-# Inspect a model's schema
-chutes-media describe owner/model-slug
+## Troubleshooting
 
-# Generate (inline JSON, @file, or a path to a .json file for --params)
-chutes-media generate --kind image --model owner/model-slug \
-  --params '{"prompt":"a red bicycle on a cobblestone street"}'
+### A Chutes request returns 401
 
-# Replacing an existing named asset must be explicit
-chutes-media generate --kind image --model owner/model-slug --filename hero.jpg --overwrite \
-  --params '{"prompt":"a red bicycle on a cobblestone street"}'
-```
+The key is missing, invalid, or sent with the wrong authentication scheme. Confirm `CHUTES_API_KEY`
+is set for the process that launches the server, then set `CHUTES_AUTH_SCHEME` to `bearer` or `raw`,
+whichever differs from the current value.
 
-Progress is printed to **stderr**; the JSON result (including the saved `path`) is printed to
-**stdout**, so agents can parse it.
+### A model returns 503 no-instances
 
----
+The model is scaled to zero and Chutes has no instance ready. The server retries automatically;
+raise `CHUTES_COLD_START_RETRIES` and `CHUTES_COLD_START_BACKOFF_MS` if the delay is too short, or
+pick another model of the same kind.
 
-## Image editing (img2img / inpaint)
+### Generation fails with an unknown or rejected parameter
 
-Chutes has **no platform-wide edit endpoint**. Editing exists only when a model publishes an edit
-cord (e.g. `img2img`, `inpaint`) or is a dedicated edit model. `describe_media_model` reports
-`supportsEditing` and lists those cords. To use one, reference a workspace file in `params` (a single
-field like `image`, or an array like `image_b64s`) — the server reads the file and base64-encodes it:
+The live model schema changed or the parameter name is wrong. Call `describe_media_model` again and
+rebuild the payload from the current schema. `CHUTES_ALLOW_UNKNOWN_PARAMS=true` is a temporary
+workaround, not a fix.
 
-```bash
-chutes-media generate --kind image --model owner/edit-capable --cord img2img \
-  --params '{"prompt":"make it snowy","image":"assets/chutes/image/scene.jpg","strength":0.6}'
-```
+### An asset write is rejected
 
-When a model has no edit cord, only generation is available.
-
----
-
-## Agent Skill (optional)
-
-The MCP server already ships **instructions** (the describe→generate workflow), so any client receives
-guidance on connect — no skill required.
-
-For Claude Code you can additionally install the bundled **Agent Skill**
-([`skill/chutes-media`](./skill/chutes-media)) for richer, auto-loaded guidance:
-
-```bash
-npx -p chutes-media-mcp chutes-media install-skill             # → ~/.claude/skills/chutes-media
-npx -p chutes-media-mcp chutes-media install-skill --project   # → ./.claude/skills/chutes-media
-```
-
-(Or copy the folder into your skills directory manually.) Agents without skill auto-loading don't
-need it — the tool descriptions and server instructions already guide them.
-
----
-
-## Cost
-
-Chutes prices by compute units. When a model exposes the cost via a response header it is returned as
-`cost`; otherwise `cost` is omitted. Check the [Chutes pricing](https://chutes.ai) for per-model
-rates.
-
-> 💡 Many public models scale to zero and may return `503 no-instances` until they warm up. The
-> server retries automatically; if a model stays cold, pick another of the same kind.
-
----
+Every input and output path must resolve inside the current workspace, and an existing file is not
+replaced implicitly. Pass the explicit `overwrite` option (or `--overwrite` in the CLI) after
+checking the target path.
 
 ## Development
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, the build/test commands, and the Windows `#`-path
-caveat. Quick version:
+Requirements: Node.js ^20.19.0, >= 22.13.0, or >= 24 with npm.
 
 ```bash
+git clone https://github.com/TheStreamCode/chutes-media-mcp
+cd chutes-media-mcp
 npm ci
 npm run check
 ```
 
-## Security
-
-Never commit your API key. Credential-bearing requests are limited to HTTPS Chutes hosts, remote
-asset URLs are screened against private-network destinations, and file access is contained to the
-workspace. Query strings and fragments are removed from network-error messages so signed asset URLs
-are not copied into logs. See [SECURITY.md](./SECURITY.md) for details and vulnerability reporting.
-
-## Migrating from 1.x
-
-Version 2.0 makes the safety boundaries enforceable instead of best-effort:
-
-- Existing named assets are preserved unless `overwrite` / `--overwrite` is explicitly set.
-- Input and output paths must resolve inside the current workspace; symlink and junction escapes are
-  rejected.
-- Custom management API URLs require HTTPS, except loopback URLs used for local development. The
-  Chutes API key is never attached to custom or loopback management endpoints.
-- Management and invocation credentials are sent only to HTTPS Chutes hosts, and asset downloads
-  must resolve to public HTTPS destinations.
-- Responses and local input assets are capped by `CHUTES_MAX_ASSET_MB` (512 MiB by default).
-
-If an existing automation intentionally replaces a file, add the explicit overwrite option after
-confirming the target path.
+`npm run check` runs the format check, lint, type check, coverage tests, and the build.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) covers the Windows path caveat and the opt-in live tests.
 
 ## Support
 
-- Ask usage questions in [GitHub Discussions](https://github.com/TheStreamCode/chutes-media-mcp/discussions).
-- Report reproducible bugs through [GitHub Issues](https://github.com/TheStreamCode/chutes-media-mcp/issues).
-- Report vulnerabilities privately by following [SECURITY.md](./SECURITY.md).
+Ask usage questions in [GitHub Discussions](https://github.com/TheStreamCode/chutes-media-mcp/discussions),
+report reproducible defects in [GitHub Issues](https://github.com/TheStreamCode/chutes-media-mcp/issues),
+and report vulnerabilities privately as described in [`SECURITY.md`](SECURITY.md).
 
-## Author
+## Contributing
 
-Built by **[Michael Gasperini](https://mikesoft.it)** — founder of [Mikesoft](https://mikesoft.it),
-building small, focused, privacy-aware developer tools.
-
-[![Sponsor](https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/TheStreamCode)
-
-If this project is useful to you, consider [sponsoring its development](https://github.com/sponsors/TheStreamCode).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Pull requests must pass the required CI checks.
 
 ## License
 
-Project-owned code, documentation, and other project-created materials are
-licensed under the [MIT License](LICENSE), except for the third-party rights
-below.
+MIT — see [`LICENSE`](LICENSE). Third-party notices are in [`NOTICE`](NOTICE).
 
-## Third-party notices and provider terms
+---
 
-This independent project is not affiliated with, sponsored by, or endorsed by
-Chutes Global Corp. The Chutes name, logo, platform, services, branding, and
-related marks are the property of Chutes Global Corp or their respective
-owners. The MIT License and this project grant no rights to use them.
-
-[`assets/chutes-media-mcp.png`](https://github.com/TheStreamCode/chutes-media-mcp/blob/main/assets/chutes-media-mcp.png) is the only
-project image in this repository that incorporates Chutes logo/marks. It is one
-of exactly three user-created Chutes-logo image compositions across the Chutes
-projects; the embedded Chutes logo/marks remain the property of their owner and
-are not licensed under MIT.
-
-The MIT License does not grant rights in Chutes services or in third-party
-models, model content, or generated outputs. Their use is subject to applicable
-provider terms and model licenses. Review Chutes' official [Terms of
-Service](https://chutes.ai/terms) and [Privacy Policy](https://chutes.ai/privacy).
-See [NOTICE](./NOTICE) for the packaged notice.
+Maintained by [Michael Gasperini (Mikesoft)](https://mikesoft.it).
+If this project is useful to you, consider [sponsoring its maintenance](https://github.com/sponsors/TheStreamCode).

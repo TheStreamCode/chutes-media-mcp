@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Chutes Documentation
-    url: https://docs.chutes.ai
-    about: Official Chutes platform documentation
-  - name: Questions and support
+  - name: Questions and workflows
     url: https://github.com/TheStreamCode/chutes-media-mcp/discussions
     about: Ask usage questions and share workflows in GitHub Discussions
+  - name: Chutes platform documentation
+    url: https://chutes.ai/docs
+    about: Account, billing, and API-key questions about the Chutes platform
