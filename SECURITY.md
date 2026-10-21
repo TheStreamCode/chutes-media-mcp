@@ -50,9 +50,8 @@ Security fixes are applied to the latest published release. Please upgrade to th
 ## Reporting a vulnerability
 
 Please report security issues privately rather than opening a public issue. Use GitHub's
-**"Report a vulnerability"** (Security Advisories) on the repository, or contact the maintainer
-listed in `package.json`.
+**"Report a vulnerability"** (Security Advisories) on the repository.
 
-Include: a description, reproduction steps, affected version, and impact. You'll receive an
-acknowledgement, and fixes for confirmed issues will be released as promptly as possible with credit
-if desired.
+Include a description, reproduction steps, affected version, and impact. You can expect an initial
+acknowledgement within 7 days and a status update within 30 days. Fixes for confirmed issues are
+released as promptly as possible, with credit in the advisory unless you ask otherwise.

@@ -173,8 +173,10 @@ block or the shell, and is never written to disk. Do not add dotenv loading.
   `engines.node` is `>=20.3`.
 - **`zod ^3`** — the MCP SDK's schema API expects v3. Do not move to v4.
 - **`typescript ^6`** — a v7 bump was evaluated and closed (PR #8). Leave it.
-- Dependabot **version-update PRs are intentionally disabled** (`chore: stop Dependabot version-update
-PRs`). Do not re-add `.github/dependabot.yml`.
+- **Dependabot** is configured in `.github/dependabot.yml` for npm and GitHub Actions. It groups
+  minor and patch updates; major updates arrive as individual pull requests and need a human review.
+  Dependency pull requests must pass the same `npm run check` and `npm audit` gates as any other
+  change; never weaken a gate to let a bump through.
 - **CodeQL uses GitHub's default setup.** Do not add a `codeql.yml` workflow — it conflicts.
 
 ## Versioning and release
@@ -195,16 +197,19 @@ Then, after the change is merged to `main`: `git tag vX.Y.Z` → push the tag �
 **What ships to npm** is controlled by `files`: `dist`, `skill`, `LICENSE`, `NOTICE`, `README.md`.
 Editing `README.md` or anything under `skill/` therefore changes the _published package_, so those
 edits warrant at least a patch release. `AGENTS.md`, `src/`, `test/` and the repo config are not
-shipped. Always confirm with `npm pack --dry-run` before releasing.
+shipped. `docs/` holds long-form documentation for the repository and is not part of the published
+package either. Always confirm with `npm pack --dry-run` before releasing.
 
-Publishing is **manual by the maintainer** using their `~/.npmrc` credentials. There is no release
-workflow and no `NPM_TOKEN` repository secret — do not add one or invent credentials.
+Publishing runs from `.github/workflows/publish.yml` when a GitHub release is published, using npm
+Trusted Publishing or the `NPM_TOKEN` secret while that is still being bootstrapped. Do not change
+that workflow's permissions, registry target, or credentials without the maintainer asking, and never
+invent credentials.
 
 ## Git and GitHub workflow
 
-- Branch `main` is **protected**: pull request required, **1 approving review**, and the
-  `build-and-test (20)` / `build-and-test (22)` checks must pass. Linear history is enforced and force
-  pushes are blocked.
+- Branch `main` is **protected**: pull request required and the `build-and-test (20)`,
+  `build-and-test (22)` and `build-and-test (24)` checks must pass. Linear history is enforced and
+  force pushes are blocked.
 - Work on a dedicated branch and open a PR with `gh pr create`. Do not push straight to `main`, do not
   force-push, do not rewrite history, and never bypass hooks or checks (`--no-verify` and friends are
   forbidden).

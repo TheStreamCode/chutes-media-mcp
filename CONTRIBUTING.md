@@ -73,9 +73,21 @@ Push-Location "$HOME\chutes-mcp-dev"; npx vitest run; Pop-Location
 
 ## Submitting changes
 
-1. Fork and create a feature branch.
-2. Make the change with accompanying tests; ensure `npm run check` passes.
-3. Open a pull request describing the change and how you verified it.
+1. Open an issue describing the problem before writing code, unless the change is a typo or a
+   documentation fix.
+2. Fork the repository and create a branch from `main`.
+3. Make the change with accompanying tests; ensure `npm run check` passes.
+4. Follow Conventional Commits (`type(scope): summary`, English, imperative mood) and keep one
+   problem per pull request.
+5. Open a pull request describing the change and how you verified it.
+
+`main` is protected: changes land through pull requests that pass the required CI checks.
+
+## Maintainer-only areas
+
+- Release tags, GitHub releases, and npm publication are performed only by the maintainer.
+- `package-lock.json` is updated only through npm, never by hand.
+- CI workflows, release metadata, and the files under `.github/` are maintainer-maintained surfaces.
 
 ## Reporting bugs
 
