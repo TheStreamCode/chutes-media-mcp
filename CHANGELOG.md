@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- Upgrade the runtime `zod` dependency to v4. The tool input and output schemas, their validation
+  rules, and the error intents are unchanged.
+
 ## [2.0.5] — 2026-08-08
 
 ### Fixed

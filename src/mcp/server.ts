@@ -70,7 +70,7 @@ server.registerTool(
     },
     outputSchema: {
       count: z.number().int().nonnegative(),
-      models: z.array(z.record(z.unknown())),
+      models: z.array(z.record(z.string(), z.unknown())),
     },
     annotations: {
       readOnlyHint: true,
@@ -110,7 +110,7 @@ server.registerTool(
       kind: z.string().optional(),
       tagline: z.string().optional(),
       invokeBaseUrl: z.string().optional(),
-      cords: z.array(z.record(z.unknown())),
+      cords: z.array(z.record(z.string(), z.unknown())),
       supportsEditing: z.boolean(),
     },
     annotations: {
@@ -142,7 +142,9 @@ server.registerTool(
     inputSchema: {
       model: z.string().min(1).max(INPUT_LIMITS.model),
       kind: z.enum(["image", "video", "music", "speech"]),
-      params: z.record(z.unknown()).describe("Payload matching the cord's input schema."),
+      params: z
+        .record(z.string(), z.unknown())
+        .describe("Payload matching the cord's input schema."),
       cord: z
         .string()
         .max(INPUT_LIMITS.cord)
