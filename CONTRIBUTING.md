@@ -7,7 +7,7 @@ reports, fixes, new media-kind handling, docs, and tests.
 
 The codebase is a shared **core** behind two thin frontends:
 
-```
+```text
 src/
 ├── core/
 │   ├── chutes-client.ts   # HTTP: list, describe, warmup, invoke (cord), download; auth; error mapping
