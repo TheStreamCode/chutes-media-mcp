@@ -140,9 +140,15 @@ git clone https://github.com/TheStreamCode/chutes-media-mcp
 cd chutes-media-mcp
 npm ci
 npm run check
+npm run verify:mcp
+npm run release:check
 ```
 
 `npm run check` runs the format check, lint, type check, coverage tests, and the build.
+`npm run verify:mcp` starts the built stdio server with a placeholder key and validates the MCP
+handshake, the instructions and the three tool definitions without calling Chutes. `npm run
+release:check` keeps `package.json`, `CHANGELOG.md`, `CITATION.cff` and `server.json` on the same
+version.
 [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the Windows path caveat and the opt-in live tests.
 
 ## Support

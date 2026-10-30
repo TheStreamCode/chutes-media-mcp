@@ -4,12 +4,38 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.0] — 2026-10-30
+
+### Added
+
+- A protocol smoke test (`npm run verify:mcp`) that starts the built stdio server with a
+  placeholder key, checks the MCP handshake, the server version, the instructions and the three
+  tool definitions, and never calls Chutes. CI and the publish workflow run it.
+- A release metadata check (`npm run release:check`) that keeps `package.json`, `CHANGELOG.md`,
+  `CITATION.cff` and `server.json` on the same version and verifies `mcpName` consistency.
+- npm publication through Trusted Publishing (OIDC). The publish workflow now requires the `npm`
+  environment, verifies that the release commit is on `main`, and gates publication on the MCP
+  surface, release metadata, package contents and the runtime dependency audit. A manual dispatch
+  trigger retries an existing release tag without recreating it.
+- An MCP Registry publication workflow using GitHub OIDC, a pinned `mcp-publisher` release and
+  checksum verification. Run it after npm publication so the registry can validate the package.
 
 ### Changed
 
 - Upgrade the runtime `zod` dependency to v4. The tool input and output schemas, their validation
   rules, and the error intents are unchanged.
+- Align `@types/node` with the minimum supported runtime (`^20.19.43`) instead of the newer major,
+  so the type surface matches `engines.node`.
+- Normalize the `repository` field to the object form npm expects and point `homepage` at the
+  project README instead of the npm page.
+- CI runs on Node 20, 22 and 24 and now also executes the MCP surface and release metadata checks
+  on every pull request.
+- Documentation, repository metadata and docs linting aligned with the Mikesoft OSS standard.
+
+### Fixed
+
+- Refresh the runtime dependency lockfile to clear the `body-parser` high advisory and the `qs` and
+  `@hono/node-server` moderate advisories that made the CI audit gate red.
 
 ## [2.0.5] — 2026-08-08
 

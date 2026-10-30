@@ -1,16 +1,22 @@
 name: Publish to npm
 
-on:
+"on":
   release:
     types:
       - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish, for example v2.1.0
+        required: true
+        type: string
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: npm-${{ github.event.release.tag_name }}
+  group: npm-${{ github.event.release.tag_name || inputs.tag }}
   cancel-in-progress: false
 
 jobs:
@@ -18,10 +24,20 @@ jobs:
     name: publish
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Publication waits for the npm environment protection rules configured in
+    # repository settings. Keep required reviewers there, not in this workflow.
+    environment: npm
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # Only publish commits that belong to main. Fetch the full history: a
+      # depth-limited fetch can make merge-base report a false negative.
+      - name: Verify release commit is on main
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Setup Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -36,12 +52,21 @@ jobs:
       - name: Verify source, tests, and build
         run: npm run check
 
+      - name: Verify MCP surface
+        run: npm run verify:mcp
+
+      - name: Verify release metadata
+        run: npm run release:check
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
       - name: Verify package contents
         run: npm pack --dry-run
 
+      - name: Runtime dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+      # Trusted Publishing: npm exchanges the GitHub OIDC token for a
+      # short-lived credential. No long-lived npm token is used or required.
       - name: Publish with provenance
         run: npm publish --access public --provenance
-        env:
-          # Needed only to bootstrap the first publication. Remove the secret
-          # after configuring npm Trusted Publishing for this workflow.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

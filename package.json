@@ -1,6 +1,6 @@
 {
   "name": "chutes-media-mcp",
-  "version": "2.0.5",
+  "version": "2.1.0",
   "mcpName": "io.github.TheStreamCode/chutes-media-mcp",
   "description": "MCP server + CLI to generate image, video, music and speech through Chutes, saving assets into your project.",
   "type": "module",
@@ -9,8 +9,11 @@
     "name": "Michael Gasperini",
     "url": "https://mikesoft.it"
   },
-  "repository": "github:TheStreamCode/chutes-media-mcp",
-  "homepage": "https://www.npmjs.com/package/chutes-media-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheStreamCode/chutes-media-mcp.git"
+  },
+  "homepage": "https://github.com/TheStreamCode/chutes-media-mcp#readme",
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/TheStreamCode"
@@ -51,6 +54,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "verify:mcp": "node scripts/verify-mcp-surface.mjs",
+    "release:check": "node scripts/verify-release.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build",
     "prepare": "npm run build",
     "prepublishOnly": "npm run check"
@@ -78,7 +83,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.6.5",
+    "@types/node": "^20.19.43",
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.0",
     "prettier": "^3.9.6",

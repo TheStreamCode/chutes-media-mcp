@@ -70,6 +70,8 @@ All commands are npm scripts defined in `package.json`; do not invent others.
 | Tests            | `npm test` · watch: `npm run test:watch` · coverage: `npm run test:coverage` |
 | Build            | `npm run build` (tsup → `dist/`)                                             |
 | **Full gate**    | `npm run check` (format:check + lint + typecheck + coverage + build)         |
+| MCP surface      | `npm run verify:mcp` (built stdio server, placeholder key, no Chutes calls)  |
+| Release metadata | `npm run release:check` (package, changelog, citation, server.json parity)   |
 | Packaging        | `npm pack --dry-run` (inspect) · `npm pack` (write the tarball)              |
 | Dependency audit | `npm audit --omit=dev --audit-level=high` (the CI gate)                      |
 | Publish          | `npm publish` — maintainer only; `prepublishOnly` runs `npm run check`       |
@@ -204,9 +206,16 @@ shipped. `docs/` holds long-form documentation for the repository and is not par
 package either. Always confirm with `npm pack --dry-run` before releasing.
 
 Publishing runs from `.github/workflows/publish.yml` when a GitHub release is published, using npm
-Trusted Publishing or the `NPM_TOKEN` secret while that is still being bootstrapped. Do not change
-that workflow's permissions, registry target, or credentials without the maintainer asking, and never
-invent credentials.
+Trusted Publishing (OIDC) configured on npmjs.com for this repository, workflow `publish.yml` and
+environment `npm`. No npm token is stored in the repository. The workflow requires the `npm`
+environment, verifies that the release commit is on `main`, and runs the MCP surface, release
+metadata, package contents and runtime audit gates before publishing. A manual dispatch accepts an
+existing tag so a failed publication can be retried. Do not change that workflow's permissions,
+registry target, or credentials without the maintainer asking, and never invent credentials.
+
+After the npm release, publish the registry entry from `.github/workflows/registry.yml` (manual
+dispatch, GitHub OIDC, pinned `mcp-publisher` with checksum verification). The registry validates the
+npm package first, so running it before npm is published fails.
 
 ## Git and GitHub workflow
 
@@ -248,8 +257,9 @@ This repository is **public** and MIT-licensed. Consequently:
 ## Checklist before proposing a change
 
 1. `npm run check` passes (format, lint, types, tests + coverage thresholds, build).
-2. `npm audit --omit=dev --audit-level=high` is clean.
-3. `npm pack --dry-run` shows the expected 13 files and no source, tests, `.env`, tarball or logo.
-4. Docs updated where behaviour changed: `README.md`, `skill/chutes-media/SKILL.md`,
+2. `npm run verify:mcp` and `npm run release:check` pass.
+3. `npm audit --omit=dev --audit-level=high` is clean.
+4. `npm pack --dry-run` shows the expected 13 files and no source, tests, `.env`, tarball or logo.
+5. Docs updated where behaviour changed: `README.md`, `skill/chutes-media/SKILL.md`,
    `skill/chutes-media/references/workflow.md`, `SECURITY.md`, `CHANGELOG.md`.
-5. No secrets in the diff; no version literal duplicated; no new dependency without justification.
+6. No secrets in the diff; no version literal duplicated; no new dependency without justification.
