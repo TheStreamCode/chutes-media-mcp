@@ -6,6 +6,17 @@ export default tseslint.config(
     ignores: ["coverage/**", "dist/**", "node_modules/**"],
   },
   eslint.configs.recommended,
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+  },
   ...tseslint.configs.recommendedTypeChecked.map((config) => ({
     ...config,
     files: ["src/**/*.ts", "test/**/*.ts", "*.ts"],
