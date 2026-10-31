@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0] — 2026-10-30
+## [2.1.0] - 2026-10-30
 
 ### Added
 
@@ -37,14 +37,14 @@ All notable changes to this project are documented here. The format is based on
 - Refresh the runtime dependency lockfile to clear the `body-parser` high advisory and the `qs` and
   `@hono/node-server` moderate advisories that made the CI audit gate red.
 
-## [2.0.5] — 2026-08-08
+## [2.0.5] - 2026-08-08
 
 ### Fixed
 
 - Preserve the case-sensitive GitHub account name in MCP Registry metadata so the namespace matches
   the publisher identity authorized by the registry.
 
-## [2.0.4] — 2026-08-08
+## [2.0.4] - 2026-08-08
 
 ### Added
 
@@ -58,7 +58,7 @@ All notable changes to this project are documented here. The format is based on
   and a less dominant rendering of the existing project image.
 - Expand npm and GitHub discovery keywords for MCP servers, developer tools, and generative media.
 
-## [2.0.3] — 2026-08-08
+## [2.0.3] - 2026-08-08
 
 ### Security
 
@@ -76,7 +76,7 @@ All notable changes to this project are documented here. The format is based on
 - Share MCP input limits with the CLI so both frontends reject oversized model, query, cord, and
   output values consistently.
 
-## [2.0.2] — 2026-08-01
+## [2.0.2] - 2026-08-01
 
 Backward-compatible security hardening, MCP metadata, documentation, and repository hygiene. No
 tool/CLI input or result fields changed, and no dependencies were added or updated.
@@ -105,14 +105,14 @@ tool/CLI input or result fields changed, and no dependencies were added or updat
 - Ignore `*.tgz` and `.npmrc` in git, so a local `npm pack` tarball or a token-bearing registry
   config can no longer be committed by accident.
 
-## [2.0.1] — 2026-08-01
+## [2.0.1] - 2026-08-01
 
 ### Security
 
 - Replace two polynomial regular-expression operations on configuration and model identifiers with
   bounded linear scans, resolving the CodeQL findings raised after the 2.0.0 release.
 
-## [2.0.0] — 2026-08-01
+## [2.0.0] - 2026-08-01
 
 This major release turns filesystem and network safeguards into enforced boundaries. Existing
 automations that replace a named output must now opt in with `overwrite` / `--overwrite`.
@@ -135,7 +135,7 @@ automations that replace a named output must now opt in with `overwrite` / `--ov
 - Exclude the repository-only logo from the npm tarball, reducing install size without affecting the
   runtime or bundled skill.
 
-## [1.2.2] — 2026-07-25
+## [1.2.2] - 2026-07-25
 
 ### Security
 
@@ -157,7 +157,7 @@ automations that replace a named output must now opt in with `overwrite` / `--ov
 - The server announced version `1.2.0` in the MCP handshake while the package shipped as `1.2.1`.
   The version is now read from `package.json` instead of being duplicated as a literal.
 
-## [1.2.1] — 2026-07-10
+## [1.2.1] - 2026-07-10
 
 ### Security
 
@@ -171,7 +171,7 @@ automations that replace a named output must now opt in with `overwrite` / `--ov
 
 - Removed the internal `chutes-media-mcp-project-plan.md` planning document from the public repository; it was never part of the shipped package and only cluttered the source tree.
 
-## [1.2.0] — 2026-06-21
+## [1.2.0] - 2026-06-21
 
 ### Added
 
@@ -183,7 +183,7 @@ automations that replace a named output must now opt in with `overwrite` / `--ov
   wrong content (not just a non-200) is caught.
 - `generate_media` now returns `schemaHash` and `provenancePath`.
 
-## [1.1.0] — 2026-06-21
+## [1.1.0] - 2026-06-21
 
 ### Added
 
@@ -193,12 +193,12 @@ automations that replace a named output must now opt in with `overwrite` / `--ov
   (`~/.claude/skills` by default, or `./.claude/skills` with `--project`).
 - The agent skill is now shipped inside the published package.
 
-## [1.0.0] — 2026-06-21
+## [1.0.0] - 2026-06-21
 
 First stable release. Documentation and packaging polish; the public API and runtime behavior are
 unchanged from 0.1.0.
 
-## [0.1.0] — 2026-06-21
+## [0.1.0] - 2026-06-21
 
 Initial release.
 
