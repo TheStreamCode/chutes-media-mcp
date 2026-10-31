@@ -84,17 +84,26 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^20.19.43",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.12",
     "eslint": "^10.8.0",
     "prettier": "^3.9.6",
     "tsup": "^9.0.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "@hono/node-server": "^2.0.12",
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.1",
+    "@eslint/config-array": {
+      "minimatch": "^11.0.3"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.3"
+    },
+    "eslint": {
+      "minimatch": "^11.0.3"
+    }
   },
   "allowScripts": {
     "esbuild@0.28.1": true
