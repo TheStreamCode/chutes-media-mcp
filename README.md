@@ -6,6 +6,7 @@ straight into the project you are working on.
 [![CI](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/TheStreamCode/chutes-media-mcp/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/chutes-media-mcp.svg)](https://www.npmjs.com/package/chutes-media-mcp)
+[![MCP server](https://glama.ai/mcp/servers/TheStreamCode/chutes-media-mcp/badges/score.svg)](https://glama.ai/mcp/servers/TheStreamCode/chutes-media-mcp)
 
 ![Chutes Media MCP at work: an MCP client, the model's live schema, and media saved into the workspace](https://raw.githubusercontent.com/TheStreamCode/chutes-media-mcp/main/assets/chutes-media-mcp.png)
 
